@@ -8,10 +8,11 @@
 import SwiftUI
 
 @main
-struct JustDooitApp: App {
+struct BagiDooitApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .tint(BagiTheme.primary)
         }
     }
 }

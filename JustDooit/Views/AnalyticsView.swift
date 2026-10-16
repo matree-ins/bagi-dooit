@@ -24,7 +24,8 @@ struct AnalyticsView: View {
                 .padding()
                 .padding(.bottom, 30)
             }
-            .navigationTitle("Analisis & Tips Hemat")
+            .bagiScreen()
+            .navigationTitle("Tips hemat")
         }
     }
 
@@ -37,8 +38,8 @@ struct AnalyticsView: View {
 
             if categoryMap.isEmpty {
                 Text("Belum ada data pengeluaran.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.footnote)
+                    .foregroundStyle(BagiTheme.muted)
             } else {
                 let total = max(1, expenseStore.totalExpensesAllTime)
                 VStack(spacing: 12) {
@@ -62,7 +63,7 @@ struct AnalyticsView: View {
                             GeometryReader { geo in
                                 ZStack(alignment: .leading) {
                                     Capsule()
-                                        .fill(Color(UIColor.tertiarySystemBackground))
+                                        .fill(BagiTheme.soft)
                                         .frame(height: 8)
 
                                     Capsule()
@@ -76,8 +77,8 @@ struct AnalyticsView: View {
                     }
                 }
                 .padding()
-                .background(Color(UIColor.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .background(BagiTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
             }
         }
     }
@@ -95,7 +96,7 @@ struct AnalyticsView: View {
             HStack {
                 Image(systemName: "lightbulb.fill")
                     .foregroundStyle(.yellow)
-                Text("Tips Hemat Finansial Cerdas")
+                Text("Kebiasaan kecil, lebih hemat")
                     .font(.headline)
             }
 
@@ -125,7 +126,7 @@ struct AnalyticsView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundStyle(.blue)
+                .foregroundStyle(BagiTheme.primary)
                 .frame(width: 32)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -134,13 +135,13 @@ struct AnalyticsView: View {
                     .fontWeight(.semibold)
                 Text(desc)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(BagiTheme.muted)
                     .lineSpacing(2)
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .background(BagiTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
     }
 }

@@ -75,8 +75,25 @@ class SpeechRecognitionService: NSObject, ObservableObject {
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
 
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, _) in
-            self.recognitionRequest?.append(buffer)
+        guard recordingFormat.sampleRate > 0, recordingFormat.channelCount > 0 else {
+            errorMessage = "Mikrofon belum tersedia. Coba lagi."
+            self.recognitionRequest = nil
+            try? audioSession.setActive(false)
+            return
+        }
+
+        do {
+            // iOS 27 supplies immutable buffers; Speech still takes a mutable PCM buffer.
+            // The new tap API supports buffers of at least 100 milliseconds.
+            let bufferSize = AVAudioFrameCount(recordingFormat.sampleRate * 0.1)
+            try inputNode.installAudioTap(onBus: 0, bufferSize: bufferSize, format: recordingFormat) { buffer, _ in
+                recognitionRequest.append(AVAudioPCMBuffer(copying: buffer))
+            }
+        } catch {
+            errorMessage = "Gagal menyiapkan mikrofon: \(error.localizedDescription)"
+            self.recognitionRequest = nil
+            try? audioSession.setActive(false)
+            return
         }
 
         audioEngine.prepare()
@@ -86,6 +103,9 @@ class SpeechRecognitionService: NSObject, ObservableObject {
             transcribedText = ""
             errorMessage = nil
         } catch {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            self.recognitionRequest = nil
+            try? audioSession.setActive(false)
             self.errorMessage = "Gagal memulai audio engine: \(error.localizedDescription)"
             return
         }

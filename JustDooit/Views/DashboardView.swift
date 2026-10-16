@@ -28,11 +28,10 @@ struct DashboardView: View {
                     // Quick Summary Header
                     headerSummaryCards
 
-                    // Feature 2: Financial Behaviour Suggestion Card
-                    FinancialBehaviorCard(expenseStore: expenseStore)
-
-                    // Quick Actions
+                    // Existing actions stay prominent; advice details can be expanded.
                     quickActionButtons
+
+                    FinancialBehaviorCard(expenseStore: expenseStore)
 
                     // Expense Filter & List Header
                     expenseListHeader
@@ -47,14 +46,15 @@ struct DashboardView: View {
                 .padding()
                 .padding(.bottom, 30)
             }
-            .navigationTitle("JustDooit 💸")
+            .bagiScreen()
+            .navigationTitle("Bagi Dooit")
             .searchable(text: $searchText, prompt: "Cari transaksi...")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddSheet = true }) {
                         Image(systemName: "plus.circle.fill")
                             .font(.title3)
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(BagiTheme.primary)
                     }
                 }
 
@@ -77,94 +77,17 @@ struct DashboardView: View {
 
     // MARK: - Header Summary Cards
     private var headerSummaryCards: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Image(systemName: "calendar.badge.clock")
-                        .foregroundStyle(.blue)
-                    Text("Hari Ini")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Text(CurrencyFormatter.format(expenseStore.totalExpensesToday))
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
-                    .minimumScaleFactor(0.8)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(Color(UIColor.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Image(systemName: "chart.pie.fill")
-                        .foregroundStyle(.purple)
-                    Text("Total Tercatat")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Text(CurrencyFormatter.format(expenseStore.totalExpensesAllTime))
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
-                    .minimumScaleFactor(0.8)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(Color(UIColor.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-        }
+        ExpenseSummaryCard(today: expenseStore.totalExpensesToday, total: expenseStore.totalExpensesAllTime)
     }
 
     // MARK: - Quick Action Buttons
     private var quickActionButtons: some View {
-        HStack(spacing: 12) {
-            Button(action: { showAddSheet = true }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.subheadline)
-                    Text("Catat Baru")
-                        .font(.footnote)
-                        .fontWeight(.bold)
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    LinearGradient(
-                        colors: [Color.blue, Color.indigo],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(color: Color.blue.opacity(0.25), radius: 5, x: 0, y: 3)
+        VStack(spacing: 12) {
+            DashboardActionTile(title: "Catat pengeluaran", subtitle: "Manual, suara, atau scan struk", symbol: "plus") {
+                showAddSheet = true
             }
-
-            Button(action: { onNavigateToSplitBill?() }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "person.2.fill")
-                        .font(.subheadline)
-                    Text("Split Bill & WA")
-                        .font(.footnote)
-                        .fontWeight(.bold)
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    LinearGradient(
-                        colors: [Color.green, Color(red: 0.1, green: 0.7, blue: 0.3)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(color: Color.green.opacity(0.25), radius: 5, x: 0, y: 3)
+            DashboardActionTile(title: "Bagi tagihan", subtitle: "Pilih pesanan dan temanmu", symbol: "person.2") {
+                onNavigateToSplitBill?()
             }
         }
     }
@@ -177,8 +100,8 @@ struct DashboardView: View {
                     .font(.headline)
                 Spacer()
                 Text("\(filteredExpenses.count) transaksi")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.footnote)
+                    .foregroundStyle(BagiTheme.muted)
             }
 
             // Category Filter Pills
@@ -218,110 +141,13 @@ struct DashboardView: View {
         VStack(spacing: 12) {
             Image(systemName: "tray")
                 .font(.system(size: 44))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BagiTheme.muted)
             Text("Belum ada pengeluaran")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BagiTheme.muted)
         }
         .padding(.vertical, 40)
     }
 }
 
 // MARK: - Supporting Row & Pill Views
-private struct FilterPill: View {
-    let title: String
-    var icon: String? = nil
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                if let icon = icon {
-                    Image(systemName: icon)
-                        .font(.caption2)
-                }
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
-            .foregroundStyle(isSelected ? .white : .primary)
-            .clipShape(Capsule())
-        }
-    }
-}
-
-private struct ExpenseRowView: View {
-    let expense: Expense
-    let onDelete: () -> Void
-
-    private var dateFormatter: DateFormatter {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .short
-        df.locale = Locale(identifier: "id_ID")
-        return df
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            // Category Icon Badge
-            Circle()
-                .fill(expense.category.color.opacity(0.18))
-                .frame(width: 44, height: 44)
-                .overlay(
-                    Image(systemName: expense.category.icon)
-                        .font(.system(size: 18))
-                        .foregroundStyle(expense.category.color)
-                )
-
-            // Title & Details
-            VStack(alignment: .leading, spacing: 4) {
-                Text(expense.title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .lineLimit(1)
-
-                HStack(spacing: 6) {
-                    Text(dateFormatter.string(from: expense.date))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-
-                    // Input Method Tag
-                    HStack(spacing: 2) {
-                        Image(systemName: expense.inputMethod.icon)
-                        Text(expense.inputMethod.rawValue)
-                    }
-                    .font(.system(size: 9))
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Color(UIColor.tertiarySystemBackground))
-                    .foregroundStyle(.secondary)
-                    .clipShape(Capsule())
-                }
-            }
-
-            Spacer()
-
-            // Amount
-            Text(CurrencyFormatter.format(expense.amount))
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .foregroundStyle(.primary)
-
-            // Delete Button
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.caption)
-                    .foregroundStyle(.gray.opacity(0.7))
-            }
-            .padding(.leading, 4)
-        }
-        .padding(12)
-        .background(Color(UIColor.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
-}

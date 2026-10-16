@@ -17,13 +17,13 @@ struct ContentView: View {
                 selectedTab = 1
             })
             .tabItem {
-                Label("Dashboard", systemImage: "house.fill")
+                Label("Beranda", systemImage: "house.fill")
             }
             .tag(0)
 
             SplitBillView()
                 .tabItem {
-                    Label("Split Bill", systemImage: "person.2.fill")
+                    Label("Bagi Tagihan", systemImage: "person.2.fill")
                 }
                 .tag(1)
 
@@ -33,7 +33,7 @@ struct ContentView: View {
                 }
                 .tag(2)
         }
-        .tint(.blue)
+        .tint(BagiTheme.primary)
     }
 }
 
