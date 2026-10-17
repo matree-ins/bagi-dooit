@@ -84,13 +84,21 @@ Kalau jawaban tidak cocok dengan format di atas dan iPhone mendukung Apple Intel
 
 | Bagian | Contoh kalimat bebas yang sudah dicoba |
 | --- | --- |
+| Nama tagihan | `the bill name is lunch at Hoka Hoka Bento with the office team` menjadi `lunch at Hoka Hoka Bento` |
 | Item | `two fried rice at twenty five thousand each and three iced teas for 5k each` |
 | Tambahan | `ten percent tax and the delivery was twelve k`, `service 5% plus admin three thousand, and a 10k discount` |
-| Pembagian | `the fried rice was for Budi and me, everyone gets one iced tea` |
+| Nama teman | `it was me with Budi, Siti and also Andi`, `Budi plus Siti` |
+| Pembagian | `Budi and Siti each had one fried rice, and everyone got an iced tea`, `fried rice shared by everyone, iced tea Budi two and Siti one` |
+
+Pengaman terhadap model:
+
+- Nama item dan nama teman hasil model harus benar-benar ada di kalimat yang diucapkan. Kalau tidak, hasilnya ditolak.
+- Saat membagi item, model hanya bisa memilih nama item dan nama orang dari tagihan (skema dinamis `anyOf`), plus `Everyone`. `Everyone` diperluas ke semua orang oleh kode, bukan oleh model.
+- Nama tagihan hanya diringkas kalau lebih dari 5 kata, dan hasilnya harus potongan kata dari kalimat asli.
 
 Batasan:
 
-- Pembagian bebas paling rapuh. Kalimat seperti `we all shared the iced tea` sering ditolak, jadi untuk pembagian lebih aman pakai format `item for nama jumlah`.
+- Pembagian bebas paling rapuh. Kalimat seperti `I had all three iced teas` kadang ditolak, jadi untuk pembagian lebih aman pakai format `item for nama jumlah`.
 - Tanpa Apple Intelligence (atau model belum siap), hanya format baku yang diterima.
 - Dengarkan ringkasan konfirmasi. Model bisa salah membaca, dan konfirmasi adalah pengaman terakhir sebelum data tersimpan.
 
@@ -187,7 +195,7 @@ Siri / Shortcuts
 | `JustDooit/Intents/RecordExpenseIntent.swift` | Catat pengeluaran pribadi lewat Siri |
 | `JustDooit/Services/SiriBillParser.swift` | Parse item, biaya, dan pembagian |
 | `JustDooit/Services/SiriBillReader.swift` | Format baku dulu; kalau gagal, Foundation Models membaca kalimat bebas |
-| `JustDooit/Models/Generated*.swift` | Struktur `@Generable` untuk output model (item, biaya, pembagian) |
+| `JustDooit/Models/Generated*.swift` | Struktur `@Generable` untuk output model (nama tagihan, item, biaya, nama teman) |
 | `JustDooit/Services/SiriSpokenNumber.swift` | Angka lisan / format rupiah terkontrol |
 | `JustDooit/Services/SiriEntryValidator.swift` | Validasi judul, nominal, daftar nama |
 | `JustDooit/Services/SiriRecordingService.swift` | Konfirmasi dulu, baru tulis ke store |

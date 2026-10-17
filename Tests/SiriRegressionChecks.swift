@@ -92,6 +92,9 @@ enum SiriRegressionChecks {
             (item: "nasi goreng", shares: [(person: "Budi", portions: 5)]),
             (item: "es teh", shares: [(person: "OrangAsing", portions: 0)])
         ]), items: items, participants: people) }, "Model-invented people or wrong portions are rejected")
+        check(try SiriEntryValidator.participants(SiriBillParser.nameText(["Budi", "Siti"])).map(\.name) == ["Saya", "Budi", "Siti"], "Model-extracted names pass the strict participant validator")
+        check(rejects { _ = try SiriEntryValidator.participants(SiriBillParser.nameText(["Budi", "Budi"])) }, "Model-duplicated names are rejected")
+        check(rejects { _ = try SiriEntryValidator.participants(SiriBillParser.nameText([])) }, "Model returning no friends is rejected")
         let largeItem = try SiriBillParser.items("pizza jumlah sepuluh harga satuan seribu")
         let largeAllocation = try SiriBillParser.assignments("pizza untuk Budi sepuluh", items: largeItem, participants: people)
         check(largeAllocation.first?.quantity == 10, "Spoken quantities above nine work in allocations")

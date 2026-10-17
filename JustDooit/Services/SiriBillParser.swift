@@ -155,6 +155,10 @@ enum SiriBillParser {
             .joined(separator: "; ")
     }
 
+    static func nameText(_ names: [String]) -> String {
+        names.map(grammarSafe).joined(separator: ", ")
+    }
+
     static func assignmentText(_ rows: [(item: String, shares: [(person: String, portions: Int)])]) -> String {
         rows.map { row in
             let receivers = row.shares.map { $0.portions > 0 ? "\(grammarSafe($0.person)) \($0.portions)" : grammarSafe($0.person) }

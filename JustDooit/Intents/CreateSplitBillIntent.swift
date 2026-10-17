@@ -33,7 +33,8 @@ struct CreateSplitBillIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        do { _ = try SiriEntryValidator.title(billTitle) }
+        let title: String
+        do { title = try await SiriBillReader.title(billTitle) }
         catch { throw $billTitle.needsValueError("\(error.localizedDescription)") }
         let items: [SiriReceiptItem]
         do { items = try await SiriBillReader.items(itemDetails) }
@@ -42,13 +43,13 @@ struct CreateSplitBillIntent: AppIntent {
         do { charges = try await SiriBillReader.charges(extraDetails, subtotal: items.reduce(0) { $0 + $1.total }) }
         catch { throw $extraDetails.needsValueError("\(SiriEntryError.invalidCharges.localizedDescription)") }
         let people: [SplitParticipant]
-        do { people = try SiriEntryValidator.participants(participantNames) }
+        do { people = try await SiriBillReader.participants(participantNames) }
         catch { throw $participantNames.needsValueError("\(error.localizedDescription)") }
         let allocations: [SplitItem]
         do { allocations = try await SiriBillReader.assignments(itemAssignments, items: items, participants: people) }
         catch { throw $itemAssignments.needsValueError("\(SiriEntryError.invalidAssignments.localizedDescription)") }
         let draft: SiriSplitBillDraft
-        do { draft = try SiriSplitBillDraft(title: billTitle, items: items, charges: charges, participants: people, assignedItems: allocations) }
+        do { draft = try SiriSplitBillDraft(title: title, items: items, charges: charges, participants: people, assignedItems: allocations) }
         catch { throw $itemDetails.needsValueError("The total must be above zero and at most one billion rupiah, including extras. Please say the items again.") }
         try await SiriRecordingService.recordSplitBill(draft, store: ExpenseStore.shared) {
             try await requestConfirmation(actionName: .create, dialog: "\(draft.confirmationSummary)")
