@@ -15,7 +15,7 @@ struct AddExpenseSheet: View {
         }
         _currentStep = State(initialValue: step)
         if let request = quickEntry {
-            _billMode = State(initialValue: .personal)
+            _billMode = State(initialValue: request.method == .voice ? .splitBill : .personal)
             _title = State(initialValue: request.title)
             if let amount = request.amount {
                 _items = State(initialValue: [BillItemEntry(name: request.title, price: amount, quantity: 1)])
@@ -85,7 +85,7 @@ struct AddExpenseSheet: View {
     @State private var scanFailedMessage: String = ""
 
     // Split Bill Destination State
-    @State private var navigateToSplitBill: Bool = false
+    @State private var splitEntryStep: EntryStep = .reviewBill
     @State private var preparedSession: SplitBillSession? = nil
 
     private var totalBillAmount: Double {
@@ -160,7 +160,10 @@ struct AddExpenseSheet: View {
                             expenseStore: expenseStore,
                             initialSession: session,
                             onComplete: { dismiss() },
-                            onBack: { currentStep = .reviewBill }
+                            onBack: {
+                                currentStep = splitEntryStep
+                                preparedSession = nil
+                            }
                         )
                     }
                 case .manualEntry:
@@ -754,6 +757,7 @@ struct AddExpenseSheet: View {
             taxPercentage: taxPct,
             servicePercentage: servicePct
         )
+        splitEntryStep = .reviewBill
         self.preparedSession = session
         self.currentStep = .splitBill
     }
@@ -1255,10 +1259,13 @@ struct AddExpenseSheet: View {
     }
 
     private var canProceed: Bool {
-        return !items.isEmpty && totalBillAmount > 0
+        return !items.isEmpty && totalBillAmount.isFinite && totalBillAmount > 0
+            && items.allSatisfy { $0.price.isFinite && $0.price > 0 && $0.quantity > 0 }
     }
 
     private func handleAction() {
+        guard canProceed else { return }
+        speechService.cancelRecording()
         let billTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? (billMode == .personal ? "Pengeluaran Baru" : "Makan Bersama")
             : title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1286,8 +1293,9 @@ struct AddExpenseSheet: View {
                 ],
                 items: splitItems
             )
+            splitEntryStep = currentStep
             self.preparedSession = session
-            self.navigateToSplitBill = true
+            self.currentStep = .splitBill
         }
     }
 }

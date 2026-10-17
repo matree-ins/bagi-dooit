@@ -1,4 +1,6 @@
-# Widget dan Siri Bagi Dooit
+# Siri dan Shortcuts Bagi Dooit
+
+Widget dinonaktifkan: kode Swift dikomentari dan target extension dilepas dari project. Implementasi tetap disimpan di folder BagiDooitWidgets untuk referensi. Instruksi dan hasil pengujian widget di bawah adalah catatan sebelum penonaktifan.
 
 ## Cara pakai
 - Jalankan aplikasi sekali setelah instalasi. Selesaikan onboarding.
