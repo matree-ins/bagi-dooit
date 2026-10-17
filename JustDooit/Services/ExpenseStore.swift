@@ -3,23 +3,28 @@
 //  JustDooit
 //
 
-import SwiftUI
-import Combine
+import Foundation
+import Observation
 
-class ExpenseStore: ObservableObject {
-    @Published var userName: String = "Teman Dooit" {
+@Observable
+@MainActor
+final class ExpenseStore {
+    /// Siri and all app windows share one observable store in the app process.
+    static let shared = ExpenseStore()
+
+    var userName: String = "Teman Dooit" {
         didSet {
             defaults.set(userName, forKey: "UserNameKey")
         }
     }
 
-    @Published var expenses: [Expense] = [] {
+    var expenses: [Expense] = [] {
         didSet {
             saveToStorage()
         }
     }
 
-    @Published var dailyBudgetLimit: Double = 150_000 {
+    var dailyBudgetLimit: Double = 150_000 {
         didSet {
             defaults.set(dailyBudgetLimit, forKey: "DailyBudgetLimitKey")
         }
@@ -27,22 +32,22 @@ class ExpenseStore: ObservableObject {
 
     let savingsAI = SavingsAIService(provider: FoundationSavingsProvider())
 
-    @Published private(set) var analysisDay = Calendar.current.startOfDay(for: Date())
+    private(set) var analysisDay = Calendar.current.startOfDay(for: Date())
 
     func refreshAnalysisDay(now: Date = Date()) {
         let day = Calendar.current.startOfDay(for: now)
         if day != analysisDay { analysisDay = day }
     }
 
-    @Published var splitSessions: [SplitBillSession] = [] {
+    var splitSessions: [SplitBillSession] = [] {
         didSet {
             saveSplitSessionsToStorage()
         }
     }
 
-    private let storageKey = "JustDooit_Expenses_v1"
-    private let splitSessionsKey = "JustDooit_SplitSessions_v1"
-    private let defaults: UserDefaults
+    @ObservationIgnored private let storageKey = "JustDooit_Expenses_v1"
+    @ObservationIgnored private let splitSessionsKey = "JustDooit_SplitSessions_v1"
+    @ObservationIgnored private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -76,7 +81,9 @@ class ExpenseStore: ObservableObject {
     }
 
     func deleteExpense(at offsets: IndexSet) {
-        expenses.remove(atOffsets: offsets)
+        for index in offsets.sorted(by: >) {
+            expenses.remove(at: index)
+        }
     }
 
     func deleteExpense(id: UUID) {
@@ -141,8 +148,7 @@ class ExpenseStore: ObservableObject {
 
     private func loadSplitSessionsFromStorage() {
         if let data = defaults.data(forKey: splitSessionsKey),
-           let decoded = try? JSONDecoder().decode([SplitBillSession].self, from: data),
-           !decoded.isEmpty {
+           let decoded = try? JSONDecoder().decode([SplitBillSession].self, from: data) {
             self.splitSessions = decoded
         } else {
             let rina = SplitParticipant(name: "Rina", phoneNumber: "")

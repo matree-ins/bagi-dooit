@@ -2,7 +2,7 @@ import SwiftUI
 import PhotosUI
 
 struct AddExpenseSheet: View {
-    @ObservedObject var expenseStore: ExpenseStore
+    var expenseStore: ExpenseStore
     @Environment(\.dismiss) private var dismiss
 
     init(expenseStore: ExpenseStore, quickEntry: QuickEntryRequest? = nil) {

@@ -9,6 +9,9 @@ struct SplitBillSession: Identifiable, Codable {
     var taxPercentage: Double = 11.0 // PPN 11% Indonesia
     var servicePercentage: Double = 5.0
     var discount: Double = 0.0
+    // Optional fields preserve decoding of receipts saved before Siri item-level splitting.
+    var additionalCharges: [SplitBillCharge]? = nil
+    var roundsToWholeRupiah: Bool? = nil
 
     var subtotal: Double {
         items.reduce(0) { $0 + $1.totalPrice }
@@ -22,8 +25,12 @@ struct SplitBillSession: Identifiable, Codable {
         max(0, (subtotal - discount) * (servicePercentage / 100.0))
     }
 
+    var additionalChargesTotal: Double {
+        (additionalCharges ?? []).reduce(0) { $0 + $1.amount(afterDiscount: max(0, subtotal - discount)) }
+    }
+
     var total: Double {
-        max(0, subtotal - discount + taxAmount + serviceAmount)
+        max(0, subtotal - discount + taxAmount + serviceAmount + additionalChargesTotal)
     }
 
     var paidCount: Int {
@@ -60,6 +67,10 @@ struct SplitBillSession: Identifiable, Codable {
               servicePercentage.isFinite, servicePercentage >= 0, total.isFinite else {
             return "Periksa nominal pesanan, diskon, pajak, dan layanan."
         }
+        guard (additionalCharges ?? []).allSatisfy({
+            !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.value.isFinite && $0.value >= 0
+                && ($0.kind != .percentage || $0.value <= 100)
+        }) else { return "Periksa biaya tambahan tagihan." }
         return nil
     }
 
@@ -77,14 +88,29 @@ struct SplitBillSession: Identifiable, Codable {
         return sum
     }
 
-    func participantTotal(for participantId: UUID) -> Double {
+    private func unroundedParticipantTotal(for participantId: UUID) -> Double {
         let pSubtotal = participantSubtotal(for: participantId)
         guard subtotal > 0 else { return 0 }
         let ratio = pSubtotal / subtotal
         let pTax = taxAmount * ratio
         let pService = serviceAmount * ratio
         let pDiscount = discount * ratio
-        return max(0, pSubtotal - pDiscount + pTax + pService)
+        return max(0, pSubtotal - pDiscount + pTax + pService + additionalChargesTotal * ratio)
+    }
+
+    func participantTotal(for participantId: UUID) -> Double {
+        guard roundsToWholeRupiah == true else { return unroundedParticipantTotal(for: participantId) }
+        guard let index = participants.firstIndex(where: { $0.id == participantId }), total.isFinite else { return 0 }
+        let amounts = participants.map { unroundedParticipantTotal(for: $0.id) }
+        guard amounts.allSatisfy({ $0.isFinite && $0 >= 0 }) else { return 0 }
+        let floors = amounts.map { floor($0) }
+        let remainder = Int(max(0, min(Double(participants.count), total.rounded() - floors.reduce(0, +))))
+        let priority = participants.indices.sorted {
+            let firstFraction = amounts[$0] - floors[$0]
+            let secondFraction = amounts[$1] - floors[$1]
+            return abs(firstFraction - secondFraction) < 0.000001 ? $0 < $1 : firstFraction > secondFraction
+        }
+        return floors[index] + (priority.prefix(remainder).contains(index) ? 1 : 0)
     }
 
     // Generate formatted WhatsApp message
@@ -110,6 +136,11 @@ struct SplitBillSession: Identifiable, Codable {
             }
         }
 
+        if discount > 0 { message += "\nDiskon tagihan: \(CurrencyFormatter.format(discount))\n" }
+        for charge in additionalCharges ?? [] {
+            message += "\n\(charge.name) tagihan: \(CurrencyFormatter.format(charge.amount(afterDiscount: max(0, subtotal - discount)))) (dibagi proporsional pesanan)\n"
+        }
+        if roundsToWholeRupiah == true { message += "\nPembulatan rupiah menyesuaikan agar total bagian sama dengan total tagihan.\n" }
         if taxPercentage > 0 || servicePercentage > 0 {
             message += "\n_(Termasuk proporsi Pajak/Service)_\n"
         }

@@ -524,6 +524,15 @@ struct SplitBillView: View {
                                 }
                             }
 
+                            if session.discount > 0 {
+                                LabeledContent("Diskon", value: "−" + formatRp(session.discount))
+                                    .foregroundStyle(BagiTheme.ink)
+                            }
+                            ForEach(session.additionalCharges ?? []) { charge in
+                                LabeledContent(charge.name, value: formatRp(charge.amount(afterDiscount: max(0, session.subtotal - session.discount))))
+                                    .foregroundStyle(BagiTheme.ink)
+                            }
+
                             Divider()
                                 .padding(.vertical, 4)
 

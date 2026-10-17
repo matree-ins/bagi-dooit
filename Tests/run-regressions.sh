@@ -14,6 +14,16 @@ xcrun swiftc -parse-as-library -swift-version 5 -default-isolation MainActor \
   "$project_root/JustDooit/Models/ReceiptScanResult.swift" \
   "$project_root/JustDooit/Services/FinancialAdvisor.swift" \
   "$project_root/JustDooit/Services/ExpenseStore.swift" \
+  "$project_root/JustDooit/Models/SiriEntryError.swift" \
+  "$project_root/JustDooit/Models/SiriReceiptItem.swift" \
+  "$project_root/JustDooit/Models/SiriBillCharges.swift" \
+  "$project_root/JustDooit/Models/SplitBillCharge.swift" \
+  "$project_root/JustDooit/Models/SplitBillChargeKind.swift" \
+  "$project_root/JustDooit/Services/SiriSpokenNumber.swift" \
+  "$project_root/JustDooit/Services/SiriBillParser.swift" \
+  "$project_root/JustDooit/Services/SiriEntryValidator.swift" \
+  "$project_root/JustDooit/Models/SiriSplitBillDraft.swift" \
+  "$project_root/JustDooit/Services/SiriRecordingService.swift" \
   "$project_root/JustDooit/Models/SavingsErrorNotice.swift" \
   "$project_root/JustDooit/Models/SavingsAdviceKey.swift" \
   "$project_root/JustDooit/Services/SavingsAIErrorMessage.swift" \
@@ -25,5 +35,6 @@ xcrun swiftc -parse-as-library -swift-version 5 -default-isolation MainActor \
   "$project_root/JustDooit/Services/SavingsAIService.swift" \
   "$project_root/Tests/MockSavingsProvider.swift" \
   "$project_root/Tests/RegressionChecks.swift" \
+  "$project_root/Tests/SiriRegressionChecks.swift" \
   -o "$check_dir/regressions"
 "$check_dir/regressions"

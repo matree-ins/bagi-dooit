@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
-    @StateObject private var expenseStore = ExpenseStore()
+    @State private var expenseStore = ExpenseStore.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .home
 

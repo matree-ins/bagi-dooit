@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct BudgetAdjustmentSheet: View {
-    @ObservedObject var expenseStore: ExpenseStore
+    var expenseStore: ExpenseStore
     @Environment(\.dismiss) var dismiss
     @State private var currentLimit: Double = 150_000
 

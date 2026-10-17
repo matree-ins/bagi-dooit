@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FinancialBehaviorCard: View {
-    @ObservedObject var expenseStore: ExpenseStore
+    var expenseStore: ExpenseStore
     @State private var isExpanded = false
     @State private var showBudgetSheet = false
 

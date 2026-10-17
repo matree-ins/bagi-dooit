@@ -6,6 +6,9 @@ struct ScanReceiptIntent: AppIntent {
     static let description = IntentDescription("Buka pemindai struk Bagi Dooit.")
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(URL(string: "bagidooit://scan")!))
+        guard let url = URL(string: "bagidooit://scan") else {
+            throw SiriEntryError.invalidBill
+        }
+        return .result(opensIntent: OpenURLIntent(url))
     }
 }

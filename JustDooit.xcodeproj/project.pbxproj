@@ -7,13 +7,38 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1694FAD3D986A223168744FF /* QuickEntryTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50763D0EF24FA8855260B7DF /* QuickEntryTimeline.swift */; };
-		275CBFD5A2E82D709126D8D2 /* QuickEntryWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A80BAFE6C17465E820391ED6 /* QuickEntryWidgetView.swift */; };
-		3832E808F9FD2A1ED77EEB42 /* QuickEntryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1B7EF58A0A1356D5123AFD /* QuickEntryProvider.swift */; };
-		418A234CD62EF97FFFDD9384 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C0E43F27650072658C9A6FCC /* Assets.xcassets */; };
-		C358BC088543D8934A01A0FB /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 36A71E6B8603B1BE5803C28E /* Foundation.framework */; };
-		D54FF3F1C95057D7406B061E /* BagiDooitWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF81D9E8CE8F3401954994D2 /* BagiDooitWidgets.swift */; };
+		2799DCB0E3581338AA524288 /* QuickEntryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1B7EF58A0A1356D5123AFD /* QuickEntryProvider.swift */; };
+		9C48DE407DB2953ACFB3E4E6 /* QuickEntryTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50763D0EF24FA8855260B7DF /* QuickEntryTimeline.swift */; };
+		C6B881FA9B4576293095A9BE /* BagiDooitWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF81D9E8CE8F3401954994D2 /* BagiDooitWidgets.swift */; };
+		D17EDB347836B65AF8959E35 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7198EAE30D018AC228528C6F /* Foundation.framework */; };
+		DC81EB1924DBED2DF7142F39 /* BagiDooitWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 5FC0399DF82916CF9ABD472D /* BagiDooitWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		EB6D31FF0AF9F89C2ABAD448 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C0E43F27650072658C9A6FCC /* Assets.xcassets */; };
+		EF76E538D4F183BE8140AADB /* QuickEntryWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A80BAFE6C17465E820391ED6 /* QuickEntryWidgetView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		74082CE19BCFBDA78417FBE8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9660AAE030821B1F001CFD62 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9575425B4D2346064C401972;
+			remoteInfo = BagiDooitWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E8C0D7702880952993489718 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				DC81EB1924DBED2DF7142F39 /* BagiDooitWidgets.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		0C1B7EF58A0A1356D5123AFD /* QuickEntryProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickEntryProvider.swift; sourceTree = "<group>"; };
@@ -21,6 +46,8 @@
 		36A71E6B8603B1BE5803C28E /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		3AA0F6D5CE8FB173F29F77CE /* BagiDooitWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BagiDooitWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		50763D0EF24FA8855260B7DF /* QuickEntryTimeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickEntryTimeline.swift; sourceTree = "<group>"; };
+		5FC0399DF82916CF9ABD472D /* BagiDooitWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BagiDooitWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7198EAE30D018AC228528C6F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		9660AAE830821B1F001CFD62 /* JustDooit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JustDooit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A80BAFE6C17465E820391ED6 /* QuickEntryWidgetView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickEntryWidgetView.swift; sourceTree = "<group>"; };
 		AF81D9E8CE8F3401954994D2 /* BagiDooitWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BagiDooitWidgets.swift; sourceTree = "<group>"; };
@@ -51,8 +78,18 @@
 /* Begin PBXFrameworksBuildPhase section */
 		9660AAE530821B1F001CFD62 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ABE6A072F0FCC4B8139BE7D4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D17EDB347836B65AF8959E35 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -73,6 +110,7 @@
 			children = (
 				9660AAE830821B1F001CFD62 /* JustDooit.app */,
 				3AA0F6D5CE8FB173F29F77CE /* BagiDooitWidgets.appex */,
+				5FC0399DF82916CF9ABD472D /* BagiDooitWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -86,7 +124,6 @@
 				A80BAFE6C17465E820391ED6 /* QuickEntryWidgetView.swift */,
 				14AC7210AE6BBAD9D6EFB21E /* Info.plist */,
 			);
-			name = BagiDooitWidgets;
 			path = BagiDooitWidgets;
 			sourceTree = "<group>";
 		};
@@ -102,6 +139,7 @@
 			isa = PBXGroup;
 			children = (
 				36A71E6B8603B1BE5803C28E /* Foundation.framework */,
+				7198EAE30D018AC228528C6F /* Foundation.framework */,
 			);
 			name = iOS;
 			sourceTree = "<group>";
@@ -109,6 +147,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		9575425B4D2346064C401972 /* BagiDooitWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B7812E1882BFAF554E467D7A /* Build configuration list for PBXNativeTarget "BagiDooitWidgets" */;
+			buildPhases = (
+				9AFE6D616A969BCE11D2AE3E /* Sources */,
+				ABE6A072F0FCC4B8139BE7D4 /* Frameworks */,
+				0EAFB962C5D2A2EB1529DBAE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BagiDooitWidgets;
+			productName = BagiDooitWidgets;
+			productReference = 5FC0399DF82916CF9ABD472D /* BagiDooitWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		9660AAE730821B1F001CFD62 /* JustDooit */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9660AAF330821B20001CFD62 /* Build configuration list for PBXNativeTarget "JustDooit" */;
@@ -116,10 +171,12 @@
 				9660AAE430821B1F001CFD62 /* Sources */,
 				9660AAE530821B1F001CFD62 /* Frameworks */,
 				9660AAE630821B1F001CFD62 /* Resources */,
+				E8C0D7702880952993489718 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				5C6BF5BB6A2D169D3297237C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				9660AAEA30821B1F001CFD62 /* JustDooit */,
@@ -159,27 +216,115 @@
 			projectRoot = "";
 			targets = (
 				9660AAE730821B1F001CFD62 /* JustDooit */,
+				9575425B4D2346064C401972 /* BagiDooitWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0EAFB962C5D2A2EB1529DBAE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EB6D31FF0AF9F89C2ABAD448 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9660AAE630821B1F001CFD62 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9660AAE430821B1F001CFD62 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9AFE6D616A969BCE11D2AE3E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6B881FA9B4576293095A9BE /* BagiDooitWidgets.swift in Sources */,
+				2799DCB0E3581338AA524288 /* QuickEntryProvider.swift in Sources */,
+				9C48DE407DB2953ACFB3E4E6 /* QuickEntryTimeline.swift in Sources */,
+				EF76E538D4F183BE8140AADB /* QuickEntryWidgetView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		5C6BF5BB6A2D169D3297237C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = BagiDooitWidgets;
+			target = 9575425B4D2346064C401972 /* BagiDooitWidgets */;
+			targetProxy = 74082CE19BCFBDA78417FBE8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		1CE71B9582D09C690B88651F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AY3WWSRSXZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BagiDooitWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Bagi Dooit";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.matreeteam.bagidooit16556hkjhfghfh.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4BA47947B02AB3B37DC333F6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AY3WWSRSXZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BagiDooitWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Bagi Dooit";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.matreeteam.bagidooit16556hkjhfghfh.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		9660AAF130821B20001CFD62 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -308,7 +453,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MF5PL3KBB2;
+				DEVELOPMENT_TEAM = AY3WWSRSXZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = JustDooit/Resources/Info.plist;
@@ -327,7 +472,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.matreeteam.bagidooit1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.matreeteam.bagidooit16556hkjhfghfh;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -346,7 +491,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MF5PL3KBB2;
+				DEVELOPMENT_TEAM = AY3WWSRSXZ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = JustDooit/Resources/Info.plist;
@@ -365,7 +510,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.matreeteam.bagidooit1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.matreeteam.bagidooit16556hkjhfghfh;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -374,61 +519,6 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		B473A563CAB6B2B7E0680C1E /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MF5PL3KBB2;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = BagiDooitWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Bagi Dooit";
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.matreeteam.bagidooit1.widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		B797389CCD6C52AB234759F5 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MF5PL3KBB2;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = BagiDooitWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Bagi Dooit";
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.matreeteam.bagidooit1.widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -441,6 +531,7 @@
 				9660AAF130821B20001CFD62 /* Debug */,
 				9660AAF230821B20001CFD62 /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		9660AAF330821B20001CFD62 /* Build configuration list for PBXNativeTarget "JustDooit" */ = {
@@ -449,6 +540,16 @@
 				9660AAF430821B20001CFD62 /* Debug */,
 				9660AAF530821B20001CFD62 /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B7812E1882BFAF554E467D7A /* Build configuration list for PBXNativeTarget "BagiDooitWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4BA47947B02AB3B37DC333F6 /* Release */,
+				1CE71B9582D09C690B88651F /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */

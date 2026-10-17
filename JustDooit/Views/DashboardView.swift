@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct DashboardView: View {
-    @ObservedObject var expenseStore: ExpenseStore
+    var expenseStore: ExpenseStore
     @Binding var quickEntry: QuickEntryRequest?
     var onNavigateToHistory: (() -> Void)? = nil
     var onShowOnboarding: (() -> Void)? = nil

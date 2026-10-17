@@ -302,6 +302,11 @@ struct RegressionChecks {
         let unavailableService = SavingsAIService(provider: unavailable, debounceNanoseconds: 0)
         unavailableService.refresh(for: facts)
         check(unavailableService.notice == unavailable.availabilityIssue, "Unavailable AI notification has no extra sentence")
+        count += try await SiriRegressionChecks.run(store: store)
+        let loadedSiriStore = ExpenseStore(defaults: defaults)
+        check(loadedSiriStore.splitSessions.first?.title == "Makan Siang" && loadedSiriStore.splitSessions.first?.additionalCharges?.count == 3, "Siri bill and its fees are visible after app reload")
+        store.splitSessions.removeAll()
+        check(ExpenseStore(defaults: defaults).splitSessions.isEmpty, "Deleted split bills stay empty after app reload")
         print("\(count) regression checks passed")
     }
 }

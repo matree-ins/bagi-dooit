@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct AnalyticsView: View {
-    @ObservedObject var expenseStore: ExpenseStore
+    var expenseStore: ExpenseStore
     var onShowOnboarding: (() -> Void)? = nil
 
     @State private var showProfileSheet: Bool = false

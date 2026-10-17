@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @ObservedObject var expenseStore: ExpenseStore
+    @Bindable var expenseStore: ExpenseStore
     var onShowOnboarding: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
