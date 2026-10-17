@@ -107,7 +107,6 @@ jobs:
           # pip install ke environment global.
           python3 -m venv "$RUNNER_TEMP/ascvenv"
           "$RUNNER_TEMP/ascvenv/bin/pip" install --quiet --disable-pip-version-check pyjwt cryptography
-          "$RUNNER_TEMP/ascvenv/bin/python" .github/scripts/next_build_number.py >> "$GITHUB_ENV"
           echo "Build number untuk run ini: $(grep BUILD_NUMBER "$GITHUB_ENV" | tail -1 | cut -d= -f2)"
 
       - name: Archive
