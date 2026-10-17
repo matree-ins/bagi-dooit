@@ -1,175 +1,186 @@
 name: Deploy to TestFlight
 
+# Otomatis upload ke TestFlight setiap ada merge ke main. Bisa juga dijalankan
+# manual lewat Actions > TestFlight > Run workflow kalau perlu retry.
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
-    inputs:
-      build_number:
-        description: 'Build Number (leave blank to use GitHub run number)'
-        required: false
-        default: ''
+  push:
+    branches: [main]
+
+# Merge beruntun ke main tidak saling membatalkan: upload yang sudah
+# terlanjur jalan dibiarkan selesai supaya build number tidak bolong.
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+env:
+  PROJECT: JustDooit.xcodeproj
+  SCHEME: JustDooit
+  BUNDLE_ID: com.matreeteam.bagidooit
+  TEAM_ID: ZQ2L8FC4YL
+  ARCHIVE_PATH: ${{ github.workspace }}/build/JustDooit.xcarchive
+  EXPORT_PATH: ${{ github.workspace }}/build/export
 
 jobs:
-  testflight:
-    name: Build & Upload to TestFlight
-    runs-on: macos-14
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+  release:
+    name: Archive & Upload
+    runs-on: macos-latest
+    timeout-minutes: 60
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16
+      # Gagal cepat dengan pesan jelas, daripada nunggu 15 menit archive
+      # lalu mentok di error xcodebuild "-authenticationKeyID is required"
+      # gara-gara nama secret salah ketik atau isinya kosong.
+      - name: Cek semua secret sudah terisi
         run: |
-          for path in /Applications/Xcode_16.2.app /Applications/Xcode_16.1.app /Applications/Xcode_16.0.app /Applications/Xcode_16.app; do
-            if [ -d "$path" ]; then
-              echo "Selecting $path"
-              sudo xcode-select -s "$path/Contents/Developer"
-              echo "DEVELOPER_DIR=$path/Contents/Developer" >> $GITHUB_ENV
-              break
-            fi
-          done
+          missing=()
+          [ -z "${{ secrets.APP_STORE_CONNECT_API_KEY }}" ] && missing+=("APP_STORE_CONNECT_API_KEY")
+          [ -z "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" ] && missing+=("APP_STORE_CONNECT_KEY_ID")
+          [ -z "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}" ] && missing+=("APP_STORE_CONNECT_ISSUER_ID")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Secret belum diisi: ${missing[*]}"
+            echo "Tambahkan di Settings > Secrets and variables > Actions > Repository secrets."
+            exit 1
+          fi
+
+      - name: Pakai Xcode terbaru yang terpasang di runner
+        run: |
+          set -euo pipefail
+          xcode=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Menggunakan $xcode"
+          sudo xcode-select -s "$xcode"
           xcodebuild -version
 
-      - name: Set Build Number
-        run: |
-          if [ -n "${{ github.event.inputs.build_number }}" ]; then
-            BUILD_NUMBER="${{ github.event.inputs.build_number }}"
-          else
-            BUILD_NUMBER="${{ github.run_number }}"
-          fi
-          echo "Setting build number to $BUILD_NUMBER"
-          xcrun agvtool new-version -all "$BUILD_NUMBER"
-
-      - name: Setup App Store Connect API Key
+      # xcodebuild dan altool cuma menemukan key lewat konvensi nama:
+      # ~/private_keys/AuthKey_<KEY_ID>.p8
+      #
+      # Isi secret diterima dua bentuk -- base64 (cara yang didokumentasikan
+      # Apple) atau isi mentah .p8 yang di-paste langsung. Dua-duanya lazim,
+      # dan menebak salah cuma menghasilkan error base64 yang tidak informatif.
+      - name: Pasang App Store Connect API key
         env:
-          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
-          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
-          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+        run: |
+          KEY_DIR="$HOME/private_keys"
+          mkdir -p "$KEY_DIR"
+          KEY_PATH="$KEY_DIR/AuthKey_${KEY_ID}.p8"
+          CLEAN=""
+          if [[ "$KEY_CONTENT" == *"BEGIN PRIVATE KEY"* ]]; then
+            printf '%s' "$KEY_CONTENT" > "$KEY_PATH"
+          else
+            # Ubah "\n" literal (backslash + n, misalnya dari paste yang
+            # ter-escape JSON) jadi newline asli, lalu buang semua whitespace --
+            # base64 tidak butuh whitespace, dan membuangnya menghapus satu
+            # kelas penuh perbedaan format akibat copy/paste.
+            CLEAN=$(printf '%s' "$KEY_CONTENT" | sed 's/\\n/\n/g' | tr -d '[:space:]')
+            printf '%s' "$CLEAN" | base64 --decode > "$KEY_PATH" 2>/dev/null || true
+          fi
+          if ! grep -q "BEGIN PRIVATE KEY" "$KEY_PATH" 2>/dev/null; then
+            echo "::error::APP_STORE_CONNECT_API_KEY bukan .p8 yang valid, bukan juga base64-nya."
+            echo "Salin ulang dengan: base64 -i AuthKey_<KEYID>.p8 | pbcopy"
+            # Diagnostik aman -- jangan pernah cetak $KEY_CONTENT atau $CLEAN.
+            echo "Diagnostik (isi key tidak ditampilkan): panjang mentah=${#KEY_CONTENT} char, baris=$(printf '%s' "$KEY_CONTENT" | wc -l | tr -d ' '), panjang setelah dibersihkan=${#CLEAN} char"
+            if [[ -n "$CLEAN" && "$CLEAN" =~ [^A-Za-z0-9+/=] ]]; then
+              echo "Setelah whitespace dibuang masih ada karakter di luar alfabet base64 -- kemungkinan rusak di perjalanan (smart quote, HTML entity), bukan sekadar beda format."
+            fi
+            exit 1
+          fi
+          chmod 600 "$KEY_PATH"
+          echo "AUTH_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      # github.run_number naik tiap run -- termasuk run yang gagal -- jadi
+      # sekali gagal, satu nomor build hangus dan riwayat TestFlight berlubang.
+      # Nomornya diambil dari App Store Connect saja: build gagal tidak pernah
+      # sampai ke sana, jadi angkanya otomatis dipakai ulang di percobaan
+      # berikutnya. Upload manual dari Xcode juga ikut terhitung.
+      - name: Tentukan build number dari App Store Connect
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         run: |
-          KEY_ID="${APP_STORE_CONNECT_API_KEY_ID:-$APP_STORE_CONNECT_API_KEY}"
-          ISSUER_ID="${APP_STORE_CONNECT_ISSUER_ID:-$APP_STORE_CONNECT_API_ISSUER_ID}"
+          set -euo pipefail
+          # venv dipakai karena python3 di runner dikelola Homebrew dan menolak
+          # pip install ke environment global.
+          python3 -m venv "$RUNNER_TEMP/ascvenv"
+          "$RUNNER_TEMP/ascvenv/bin/pip" install --quiet --disable-pip-version-check pyjwt cryptography
+          "$RUNNER_TEMP/ascvenv/bin/python" .github/scripts/next_build_number.py >> "$GITHUB_ENV"
+          echo "Build number untuk run ini: $(grep BUILD_NUMBER "$GITHUB_ENV" | tail -1 | cut -d= -f2)"
 
-          if [ -n "$KEY_ID" ] && [ -n "$APP_STORE_CONNECT_API_KEY_BASE64" ]; then
-            mkdir -p ~/.appstoreconnect/private_keys
-            echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
-            echo "ASC_KEY_ID=$KEY_ID" >> $GITHUB_ENV
-            echo "ASC_ISSUER_ID=$ISSUER_ID" >> $GITHUB_ENV
-            echo "App Store Connect API Key configured successfully for Key ID: $KEY_ID"
-          else
-            echo "App Store Connect API Key secrets not fully provided."
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE_PATH" \
+            CODE_SIGNING_ALLOWED=NO \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            | xcbeautify
+
+      - name: Export .ipa
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath "$EXPORT_PATH" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$AUTH_KEY_PATH" \
+            -authenticationKeyID "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+
+      - name: Upload ke TestFlight
+        run: |
+          set -euo pipefail
+          ipa=$(find "$EXPORT_PATH" -name '*.ipa' -maxdepth 1 | head -1)
+          if [ -z "$ipa" ]; then
+            echo "::error::Tidak ada .ipa di $EXPORT_PATH"
+            exit 1
           fi
+          echo "Mengunggah $ipa"
+          xcrun altool --upload-app \
+            -f "$ipa" \
+            -t ios \
+            --apiKey "${{ secrets.APP_STORE_CONNECT_KEY_ID }}" \
+            --apiIssuer "${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
 
-      - name: Install Apple Certificate and Provisioning Profile (if provided)
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      # exportArchive menulis alasan sebenarnya (respons API Apple) ke bundle
+      # .xcdistributionlogs di TMPDIR, bukan ke stdout. Tanpa ini yang terlihat
+      # di Actions cuma "Cloud signing permission error" tanpa penyebabnya.
+      - name: Kumpulkan log exportArchive kalau gagal
+        if: failure()
         run: |
-          if [ -z "$BUILD_CERTIFICATE_BASE64" ]; then
-            echo "No manual certificate provided, proceeding with App Store Connect API or Ad-Hoc signing."
+          set -uo pipefail
+          dest="${{ github.workspace }}/build/distributionlogs"
+          mkdir -p "$dest"
+          find "${TMPDIR:-/tmp}" -maxdepth 2 -name '*.xcdistributionlogs' -exec cp -R {} "$dest/" \; 2>/dev/null || true
+          if [ -z "$(ls -A "$dest" 2>/dev/null)" ]; then
+            echo "Tidak ada .xcdistributionlogs -- kemungkinan gagal sebelum tahap export."
             exit 0
           fi
+          # Dicetak langsung ke log Actions supaya tidak perlu unduh artifact
+          # cuma untuk baca satu baris error.
+          for f in $(find "$dest" -name 'IDEDistribution.critical.log' -o -name 'IDEDistribution.standard.log'); do
+            echo "===== $f ====="
+            cat "$f"
+          done
 
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
-          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
-          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
-          cp "$PP_PATH" ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
-
-      - name: Create ExportOptions.plist
-        run: |
-          cat <<EOF > ExportOptions.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>destination</key>
-              <string>upload</string>
-              <key>signingStyle</key>
-              <string>automatic</string>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>teamID</key>
-              <string>4RRZH3B34B</string>
-              <key>uploadSymbols</key>
-              <true/>
-          </dict>
-          </plist>
-          EOF
-
-      - name: Build Archive
-        run: |
-          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -f ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 ]; then
-            echo "Archiving with App Store Connect API Key & automatic provisioning..."
-            xcodebuild -project JustDooit.xcodeproj \
-              -scheme JustDooit \
-              -configuration Release \
-              -destination 'generic/platform=iOS' \
-              -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
-              -allowProvisioningUpdates \
-              -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-              -authenticationKeyID "$ASC_KEY_ID" \
-              -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-              archive
-          else
-            echo "Archiving with local Ad-Hoc signature..."
-            xcodebuild -project JustDooit.xcodeproj \
-              -scheme JustDooit \
-              -configuration Release \
-              -destination 'generic/platform=iOS' \
-              -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
-              CODE_SIGN_IDENTITY="-" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=YES \
-              archive
-          fi
-
-      - name: Export & Upload to TestFlight
-        run: |
-          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -f ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 ]; then
-            echo "Exporting and uploading to TestFlight via App Store Connect API Key..."
-            xcodebuild -exportArchive \
-              -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
-              -exportOptionsPlist ExportOptions.plist \
-              -exportPath $RUNNER_TEMP/build \
-              -allowProvisioningUpdates \
-              -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-              -authenticationKeyID "$ASC_KEY_ID" \
-              -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-          else
-            echo "Exporting with default settings..."
-            xcodebuild -exportArchive \
-              -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
-              -exportOptionsPlist ExportOptions.plist \
-              -exportPath $RUNNER_TEMP/build \
-              -allowProvisioningUpdates
-          fi
-
-      - name: Upload Build Artifacts
+      # Kalau upload ditolak App Store Connect, .ipa dan dSYM-nya masih bisa
+      # diperiksa (atau diunggah manual lewat Transporter) tanpa build ulang.
+      - name: Simpan .ipa & dSYM
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: JustDooit-IPA
-          path: ${{ runner.temp }}/build/
-          retention-days: 7
+          name: bagidooit-build-${{ github.run_number }}
+          path: |
+            ${{ env.EXPORT_PATH }}/*.ipa
+            ${{ env.ARCHIVE_PATH }}/dSYMs
+            ${{ github.workspace }}/build/distributionlogs
+          if-no-files-found: ignore
+          retention-days: 14
