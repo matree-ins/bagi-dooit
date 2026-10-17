@@ -19,7 +19,7 @@ struct FilterPill: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
-            .background(isSelected ? BagiTheme.primary : BagiTheme.surface)
+            .background(isSelected ? BagiTheme.action : BagiTheme.surface)
             .foregroundStyle(isSelected ? .white : .primary)
             .clipShape(Capsule())
         }

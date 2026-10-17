@@ -71,7 +71,7 @@ struct SplitBillView: View {
 
     var body: some View {
         ZStack {
-                Color(hex: "#F6F7FB")
+                BagiTheme.background
                     .ignoresSafeArea()
 
                 switch currentStep {
@@ -87,11 +87,9 @@ struct SplitBillView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if isDetailMode {
-                        Button("Tutup") {
-                            dismiss()
-                        }
+                        Button("Tutup", action: closeFlow)
                         .font(.subheadline)
-                        .foregroundStyle(Color(hex: "#2D50FF"))
+                        .foregroundStyle(BagiTheme.primary)
                     } else {
                         Button(action: handleBackNavigation) {
                             HStack(spacing: 4) {
@@ -99,22 +97,16 @@ struct SplitBillView: View {
                                 Text("Kembali")
                             }
                             .font(.subheadline)
-                            .foregroundStyle(Color(hex: "#2D50FF"))
+                            .foregroundStyle(BagiTheme.primary)
                         }
                     }
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    if isDetailMode {
-                        Button(role: .destructive, action: { showDeleteConfirmation = true }) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 15))
-                                .foregroundStyle(.red)
-                        }
-                    } else {
+                if !isDetailMode {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Text("Langkah \(currentStep.rawValue)/3")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#6B7280"))
+                            .font(.footnote.bold())
+                            .foregroundStyle(BagiTheme.muted)
                     }
                 }
             }
@@ -122,7 +114,7 @@ struct SplitBillView: View {
                 Button("Batal", role: .cancel) {}
                 Button("Hapus Tagihan", role: .destructive) {
                     expenseStore?.deleteSplitSession(id: session.id)
-                    dismiss()
+                    closeFlow()
                 }
             } message: {
                 Text("Tagihan ini akan dihapus dari daftar. Anda dapat membuat tagihan baru jika ada salah pembagian.")
@@ -169,8 +161,17 @@ struct SplitBillView: View {
         }
     }
 
-    private func saveSessionToStore() {
+    private func closeFlow() {
+        if let onComplete {
+            onComplete()
+        } else {
+            dismiss()
+        }
+    }
+
+    private func completeFlow() {
         expenseStore?.addSplitSession(session)
+        closeFlow()
     }
 
 
@@ -184,11 +185,11 @@ struct SplitBillView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Pilih peserta.")
                             .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(Color(hex: "#111827"))
+                            .foregroundStyle(BagiTheme.ink)
 
                         Text("Tentukan siapa saja yang ikut patungan.")
                             .font(.system(size: 15))
-                            .foregroundStyle(Color(hex: "#6B7280"))
+                            .foregroundStyle(BagiTheme.muted)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24)
@@ -205,10 +206,10 @@ struct SplitBillView: View {
                                     Text("Dari Kontak")
                                         .font(.system(size: 14, weight: .semibold))
                                 }
-                                .foregroundStyle(Color(hex: "#2D50FF"))
+                                .foregroundStyle(BagiTheme.primary)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 42)
-                                .background(Color(hex: "#2D50FF").opacity(0.08))
+                                .background(BagiTheme.primary.opacity(0.08))
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
 
@@ -219,10 +220,10 @@ struct SplitBillView: View {
                                     Text("Input Manual")
                                         .font(.system(size: 14, weight: .semibold))
                                 }
-                                .foregroundStyle(Color(hex: "#1F2937"))
+                                .foregroundStyle(BagiTheme.ink)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 42)
-                                .background(Color(hex: "#F3F4F6"))
+                                .background(BagiTheme.soft)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
                         }
@@ -242,33 +243,33 @@ struct SplitBillView: View {
                                     // Avatar
                                     ZStack {
                                         Circle()
-                                            .fill(participant.name == "Saya" ? Color(hex: "#2D50FF").opacity(0.12) : Color.green.opacity(0.15))
+                                            .fill(participant.name == "Saya" ? BagiTheme.primary.opacity(0.12) : Color.green.opacity(0.15))
                                             .frame(width: 38, height: 38)
                                         Text(participant.name.prefix(1).uppercased())
                                             .font(.system(size: 15, weight: .bold))
-                                            .foregroundStyle(participant.name == "Saya" ? Color(hex: "#2D50FF") : Color.green)
+                                            .foregroundStyle(participant.name == "Saya" ? BagiTheme.action : Color.green)
                                     }
 
                                     VStack(alignment: .leading, spacing: 3) {
                                         HStack(spacing: 6) {
                                             Text(participant.name)
                                                 .font(.system(size: 16, weight: .semibold))
-                                                .foregroundStyle(Color(hex: "#111827"))
+                                                .foregroundStyle(BagiTheme.ink)
 
                                             if participant.name == "Saya" {
                                                 Text("Anda")
                                                     .font(.system(size: 11, weight: .bold))
-                                                    .foregroundStyle(Color(hex: "#2D50FF"))
+                                                    .foregroundStyle(BagiTheme.primary)
                                                     .padding(.horizontal, 6)
                                                     .padding(.vertical, 2)
-                                                    .background(Color(hex: "#2D50FF").opacity(0.1))
+                                                    .background(BagiTheme.primary.opacity(0.1))
                                                     .clipShape(Capsule())
                                             }
                                         }
 
                                         Text(participant.phoneNumber.isEmpty ? (participant.name == "Saya" ? "Pemilik Tagihan" : "Tanpa nomor") : participant.phoneNumber)
                                             .font(.system(size: 13))
-                                            .foregroundStyle(Color(hex: "#6B7280"))
+                                            .foregroundStyle(BagiTheme.muted)
                                     }
 
                                     Spacer()
@@ -310,16 +311,16 @@ struct SplitBillView: View {
                         HStack {
                             Text("Total Peserta")
                                 .font(.system(size: 15))
-                                .foregroundStyle(Color(hex: "#374151"))
+                                .foregroundStyle(BagiTheme.ink)
                             Spacer()
                             Text("\(session.participants.count) Orang")
                                 .font(.system(size: 16, weight: .bold))
-                                .foregroundStyle(Color(hex: "#111827"))
+                                .foregroundStyle(BagiTheme.ink)
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 18)
                     }
-                    .background(Color.white)
+                    .background(BagiTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .shadow(color: Color.black.opacity(0.04), radius: 12, x: 0, y: 4)
                     .padding(.horizontal, 20)
@@ -340,8 +341,8 @@ struct SplitBillView: View {
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(session.participants.count >= 2 ? Color(hex: "#2D50FF") : Color.gray.opacity(0.4))
+                    .frame(minHeight: 52)
+                    .background(session.participants.count >= 2 ? BagiTheme.action : Color.gray.opacity(0.4))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .disabled(session.participants.count < 2)
@@ -349,13 +350,13 @@ struct SplitBillView: View {
                 if session.participants.count < 2 {
                     Text("Tambahkan minimal 1 teman untuk membagi tagihan")
                         .font(.system(size: 12))
-                        .foregroundStyle(Color(hex: "#6B7280"))
+                        .foregroundStyle(BagiTheme.muted)
                 }
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
             .padding(.bottom, 16)
-            .background(Color(hex: "#F6F7FB"))
+            .background(BagiTheme.background)
         }
     }
 
@@ -370,11 +371,11 @@ struct SplitBillView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Bagi menu.")
                             .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(Color(hex: "#111827"))
+                            .foregroundStyle(BagiTheme.ink)
 
                         Text("Ketuk peserta untuk membagi tiap makanan.")
                             .font(.system(size: 15))
-                            .foregroundStyle(Color(hex: "#6B7280"))
+                            .foregroundStyle(BagiTheme.muted)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24)
@@ -390,29 +391,29 @@ struct SplitBillView: View {
                                     HStack(alignment: .top) {
                                         Text(item.name)
                                             .font(.system(size: 16, weight: .semibold))
-                                            .foregroundStyle(Color(hex: "#111827"))
+                                            .foregroundStyle(BagiTheme.ink)
                                         Spacer()
                                         Text(formatRp(item.totalPrice))
                                             .font(.system(size: 16, weight: .semibold))
-                                            .foregroundStyle(Color(hex: "#111827"))
+                                            .foregroundStyle(BagiTheme.ink)
                                     }
 
                                     // Subtitle: Qty x Unit Price
                                     HStack {
                                         Text("\(item.quantity) × \(formatRp(item.price))")
                                             .font(.system(size: 14))
-                                            .foregroundStyle(Color(hex: "#6B7280"))
+                                            .foregroundStyle(BagiTheme.muted)
                                         Spacer()
                                         if !item.assignedParticipantIds.isEmpty {
                                             let count = item.assignedParticipantIds.count
                                             let perPerson = item.totalPrice / Double(count)
                                             Text("\(count) orang (@ \(formatRp(perPerson)))")
                                                 .font(.system(size: 12, weight: .semibold))
-                                                .foregroundStyle(Color(hex: "#2D50FF"))
+                                                .foregroundStyle(BagiTheme.primary)
                                         } else {
                                             Text("Pilih peserta di bawah")
                                                 .font(.system(size: 12, weight: .medium))
-                                                .foregroundStyle(Color(hex: "#9CA3AF"))
+                                                .foregroundStyle(BagiTheme.muted)
                                         }
                                     }
 
@@ -436,8 +437,8 @@ struct SplitBillView: View {
                                                 }
                                                 .padding(.horizontal, 10)
                                                 .padding(.vertical, 6)
-                                                .background(session.items[idx].assignedParticipantIds.count == session.participants.count ? Color(hex: "#2D50FF") : Color(hex: "#F3F4F6"))
-                                                .foregroundStyle(session.items[idx].assignedParticipantIds.count == session.participants.count ? .white : Color(hex: "#374151"))
+                                                .background(session.items[idx].assignedParticipantIds.count == session.participants.count ? BagiTheme.action : BagiTheme.soft)
+                                                .foregroundStyle(session.items[idx].assignedParticipantIds.count == session.participants.count ? .white : BagiTheme.ink)
                                                 .clipShape(Capsule())
                                             }
                                             .buttonStyle(.plain)
@@ -462,8 +463,8 @@ struct SplitBillView: View {
                                                     }
                                                     .padding(.horizontal, 10)
                                                     .padding(.vertical, 6)
-                                                    .background(isAssigned ? Color(hex: "#2D50FF") : Color(hex: "#F3F4F6"))
-                                                    .foregroundStyle(isAssigned ? .white : Color(hex: "#374151"))
+                                                    .background(isAssigned ? BagiTheme.action : BagiTheme.soft)
+                                                    .foregroundStyle(isAssigned ? .white : BagiTheme.ink)
                                                     .clipShape(Capsule())
                                                 }
                                                 .buttonStyle(.plain)
@@ -492,22 +493,22 @@ struct SplitBillView: View {
                             HStack {
                                 Text("Subtotal")
                                     .font(.system(size: 15))
-                                    .foregroundStyle(Color(hex: "#374151"))
+                                    .foregroundStyle(BagiTheme.ink)
                                 Spacer()
                                 Text(formatRp(session.subtotal))
                                     .font(.system(size: 15))
-                                    .foregroundStyle(Color(hex: "#111827"))
+                                    .foregroundStyle(BagiTheme.ink)
                             }
 
                             if session.taxAmount > 0 {
                                 HStack {
                                     Text("Pajak (\(Int(session.taxPercentage))%)")
                                         .font(.system(size: 15))
-                                        .foregroundStyle(Color(hex: "#374151"))
+                                        .foregroundStyle(BagiTheme.ink)
                                     Spacer()
                                     Text(formatRp(session.taxAmount))
                                         .font(.system(size: 15))
-                                        .foregroundStyle(Color(hex: "#111827"))
+                                        .foregroundStyle(BagiTheme.ink)
                                 }
                             }
 
@@ -515,11 +516,11 @@ struct SplitBillView: View {
                                 HStack {
                                     Text("Layanan (\(Int(session.servicePercentage))%)")
                                         .font(.system(size: 15))
-                                        .foregroundStyle(Color(hex: "#374151"))
+                                        .foregroundStyle(BagiTheme.ink)
                                     Spacer()
                                     Text(formatRp(session.serviceAmount))
                                         .font(.system(size: 15))
-                                        .foregroundStyle(Color(hex: "#111827"))
+                                        .foregroundStyle(BagiTheme.ink)
                                 }
                             }
 
@@ -529,17 +530,17 @@ struct SplitBillView: View {
                             HStack {
                                 Text("Total")
                                     .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(Color(hex: "#111827"))
+                                    .foregroundStyle(BagiTheme.ink)
                                 Spacer()
                                 Text(formatRp(session.total))
                                     .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(Color(hex: "#111827"))
+                                    .foregroundStyle(BagiTheme.ink)
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
                     }
-                    .background(Color.white)
+                    .background(BagiTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .shadow(color: Color.black.opacity(0.04), radius: 12, x: 0, y: 4)
                     .padding(.horizontal, 20)
@@ -560,8 +561,8 @@ struct SplitBillView: View {
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(canProceedToSummary ? Color(hex: "#2D50FF") : Color.gray.opacity(0.4))
+                    .frame(minHeight: 52)
+                    .background(canProceedToSummary ? BagiTheme.action : Color.gray.opacity(0.4))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .disabled(!canProceedToSummary)
@@ -569,13 +570,13 @@ struct SplitBillView: View {
                 if !canProceedToSummary {
                     Text("Pastikan setiap makanan sudah dibagikan ke minimal 1 orang")
                         .font(.system(size: 12))
-                        .foregroundStyle(Color(hex: "#6B7280"))
+                        .foregroundStyle(BagiTheme.muted)
                 }
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
             .padding(.bottom, 16)
-            .background(Color(hex: "#F6F7FB"))
+            .background(BagiTheme.background)
         }
     }
 
@@ -592,11 +593,11 @@ struct SplitBillView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(isDetailMode ? (session.title.isEmpty ? "Hasil patungan." : session.title) : "Hasil patungan.")
                             .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(Color(hex: "#111827"))
+                            .foregroundStyle(BagiTheme.ink)
 
                         Text(isDetailMode ? "Pantau status pembayaran & kirim rincian via WhatsApp." : "Kirim rincian tagihan via WhatsApp.")
                             .font(.system(size: 15))
-                            .foregroundStyle(Color(hex: "#6B7280"))
+                            .foregroundStyle(BagiTheme.muted)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24)
@@ -616,22 +617,22 @@ struct SplitBillView: View {
                                             HStack(spacing: 6) {
                                                 Text(participant.name)
                                                     .font(.system(size: 16, weight: .bold))
-                                                    .foregroundStyle(Color(hex: "#111827"))
+                                                    .foregroundStyle(BagiTheme.ink)
 
                                                 if participant.name == "Saya" {
                                                     Text("Anda")
                                                         .font(.system(size: 11, weight: .bold))
-                                                        .foregroundStyle(Color(hex: "#2D50FF"))
+                                                        .foregroundStyle(BagiTheme.primary)
                                                         .padding(.horizontal, 6)
                                                         .padding(.vertical, 2)
-                                                        .background(Color(hex: "#2D50FF").opacity(0.1))
+                                                        .background(BagiTheme.primary.opacity(0.1))
                                                         .clipShape(Capsule())
                                                 }
                                             }
 
                                             Text(assignedItemsSummary(for: participant))
                                                 .font(.system(size: 13))
-                                                .foregroundStyle(Color(hex: "#6B7280"))
+                                                .foregroundStyle(BagiTheme.muted)
                                                 .lineLimit(2)
                                         }
 
@@ -639,7 +640,7 @@ struct SplitBillView: View {
 
                                         Text(formatRp(pTotal))
                                             .font(.system(size: 17, weight: .bold))
-                                            .foregroundStyle(Color(hex: "#111827"))
+                                            .foregroundStyle(BagiTheme.ink)
                                     }
 
                                     // Action Buttons: WhatsApp & Status Pembayaran
@@ -658,7 +659,7 @@ struct SplitBillView: View {
                                                 .foregroundStyle(.white)
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 8)
-                                                .background(Color(hex: "#25D366"))
+                                                .background(BagiTheme.action)
                                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                                             }
 
@@ -668,10 +669,10 @@ struct SplitBillView: View {
                                             }) {
                                                 Text("Pratinjau")
                                                     .font(.system(size: 13, weight: .medium))
-                                                    .foregroundStyle(Color(hex: "#374151"))
+                                                    .foregroundStyle(BagiTheme.ink)
                                                     .padding(.horizontal, 10)
                                                     .padding(.vertical, 8)
-                                                    .background(Color(hex: "#F3F4F6"))
+                                                    .background(BagiTheme.soft)
                                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                                             }
 
@@ -719,16 +720,16 @@ struct SplitBillView: View {
                         HStack {
                             Text("Total Tagihan")
                                 .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(Color(hex: "#111827"))
+                                .foregroundStyle(BagiTheme.ink)
                             Spacer()
                             Text(formatRp(session.total))
                                 .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(Color(hex: "#111827"))
+                                .foregroundStyle(BagiTheme.ink)
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
                     }
-                    .background(Color.white)
+                    .background(BagiTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .shadow(color: Color.black.opacity(0.04), radius: 12, x: 0, y: 4)
                     .padding(.horizontal, 20)
@@ -739,15 +740,13 @@ struct SplitBillView: View {
             // Bottom Action
             VStack(spacing: 10) {
                 if isDetailMode {
-                    Button(action: {
-                        dismiss()
-                    }) {
+                    Button(action: completeFlow) {
                         Text("Selesai")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(Color(hex: "#2D50FF"))
+                            .frame(minHeight: 52)
+                            .background(BagiTheme.action)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
 
@@ -766,17 +765,13 @@ struct SplitBillView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 } else {
-                    Button(action: {
-                        saveSessionToStore()
-                        dismiss()
-                        onComplete?()
-                    }) {
+                    Button(action: completeFlow) {
                         Text("Selesai & Simpan")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(Color(hex: "#2D50FF"))
+                            .frame(minHeight: 52)
+                            .background(BagiTheme.action)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
                 }
@@ -784,7 +779,7 @@ struct SplitBillView: View {
             .padding(.horizontal, 20)
             .padding(.top, 12)
             .padding(.bottom, 16)
-            .background(Color(hex: "#F6F7FB"))
+            .background(BagiTheme.background)
         }
     }
 
@@ -822,14 +817,14 @@ struct SplitBillView: View {
 
                 Text("Pesan ini akan otomatis dikirim ke nomor **\(participant.phoneNumber.isEmpty ? "(Tanpa nomor)" : participant.phoneNumber)**:")
                     .font(.footnote)
-                    .foregroundStyle(Color(hex: "#6B7280"))
+                    .foregroundStyle(BagiTheme.muted)
 
                 ScrollView {
                     Text(session.generateWhatsAppMessage(for: participant))
                         .font(.system(.footnote, design: .monospaced))
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(hex: "#F3F4F6"))
+                        .background(BagiTheme.soft)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
@@ -845,7 +840,7 @@ struct SplitBillView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color(hex: "#2D50FF"))
+                    .background(BagiTheme.action)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }

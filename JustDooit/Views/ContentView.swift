@@ -13,6 +13,9 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .home
 
+    @State private var quickEntry: QuickEntryRequest?
+    @State private var pendingEntry: QuickEntryRequest?
+
     var body: some View {
         Group {
             if !hasCompletedOnboarding {
@@ -25,6 +28,7 @@ struct ContentView: View {
                 TabView(selection: $selectedTab) {
                     DashboardView(
                         expenseStore: expenseStore,
+                        quickEntry: $quickEntry,
                         onNavigateToHistory: {
                             selectedTab = .history
                         },
@@ -66,6 +70,22 @@ struct ContentView: View {
                     .tag(AppTab.analytics)
                 }
                 .tint(BagiTheme.primary)
+            }
+        }
+        .onOpenURL { url in
+            guard let request = QuickEntryRequest(url: url) else { return }
+            if hasCompletedOnboarding {
+                selectedTab = .home
+                quickEntry = request
+            } else {
+                pendingEntry = request
+            }
+        }
+        .onChange(of: hasCompletedOnboarding) { _, complete in
+            if complete, let request = pendingEntry {
+                pendingEntry = nil
+                selectedTab = .home
+                quickEntry = request
             }
         }
         .task(id: hasCompletedOnboarding) {

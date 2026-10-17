@@ -149,7 +149,7 @@ struct SplitBillReceiptScannerView: View {
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(BagiTheme.primary)
+                                .background(BagiTheme.action)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
                             .padding(.top, 8)

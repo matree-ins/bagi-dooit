@@ -80,7 +80,7 @@ final class SavingsAIService {
         attemptedAt = now
         availabilityAtAttempt = issue
         if let issue {
-            publish(SavingsErrorNotice(message: issue + " Saran yang tersedia tetap ditampilkan.", canRetry: provider.availabilityCanRetry), force: force)
+            publish(SavingsErrorNotice(message: issue, canRetry: provider.availabilityCanRetry), force: force)
             return
         }
         let id = requestID

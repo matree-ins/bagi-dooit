@@ -5,6 +5,7 @@ struct BagiScreenStyle: ViewModifier {
         content
             .scrollContentBackground(.hidden)
             .background(BagiTheme.background)
+            .foregroundStyle(BagiTheme.ink)
             .tint(BagiTheme.primary)
     }
 }

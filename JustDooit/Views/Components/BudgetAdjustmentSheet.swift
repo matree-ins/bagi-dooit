@@ -54,7 +54,7 @@ struct BudgetAdjustmentSheet: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(BagiTheme.primary)
+                        .background(BagiTheme.action)
                         .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
                 }
                 .padding(.horizontal)

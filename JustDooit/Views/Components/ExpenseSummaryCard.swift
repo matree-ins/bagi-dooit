@@ -23,6 +23,6 @@ struct ExpenseSummaryCard: View {
         .foregroundStyle(.white)
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BagiTheme.primary, in: .rect(cornerRadius: BagiTheme.radius))
+        .background(BagiTheme.action, in: .rect(cornerRadius: BagiTheme.radius))
     }
 }

@@ -1,11 +1,15 @@
 import SwiftUI
 
 struct ExpenseRowView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let expense: Expense
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+        layout {
             // Category Icon Badge
             Circle()
                 .fill(expense.category.color.opacity(0.18))
@@ -21,34 +25,25 @@ struct ExpenseRowView: View {
                 Text(expense.title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .lineLimit(1)
+                    .lineLimit(2)
 
-                HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(expense.date, format: .dateTime.day().month(.abbreviated).year().hour().minute())
                         .font(.footnote)
                         .foregroundStyle(BagiTheme.muted)
 
-                    // Input Method Tag
-                    HStack(spacing: 2) {
-                        Image(systemName: expense.inputMethod.icon)
-                        Text(expense.inputMethod.rawValue)
-                    }
-                    .font(.system(.footnote))
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(BagiTheme.soft)
-                    .foregroundStyle(BagiTheme.muted)
-                    .clipShape(Capsule())
+
                 }
             }
 
-            Spacer()
+            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
 
             // Amount
             Text(CurrencyFormatter.format(expense.amount))
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .foregroundStyle(.primary)
+                .font(.subheadline.bold()).monospacedDigit()
+                .foregroundStyle(BagiTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
 
             // Delete Button
             Button(role: .destructive, action: onDelete) {

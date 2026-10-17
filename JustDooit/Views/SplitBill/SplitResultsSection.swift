@@ -61,7 +61,7 @@ struct SplitResultsSection: View {
                                 Text(participant.name.prefix(1).uppercased())
                                     .font(.headline)
                                     .fontWeight(.bold)
-                                    .foregroundStyle(participant.name == "Saya" ? BagiTheme.primary : (participant.isPaid ? Color.green : Color.orange))
+                                    .foregroundStyle(participant.name == "Saya" ? BagiTheme.action : (participant.isPaid ? Color.green : Color.orange))
                             }
 
                             VStack(alignment: .leading, spacing: 2) {

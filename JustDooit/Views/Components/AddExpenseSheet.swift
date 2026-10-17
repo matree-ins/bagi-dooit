@@ -5,6 +5,24 @@ struct AddExpenseSheet: View {
     @ObservedObject var expenseStore: ExpenseStore
     @Environment(\.dismiss) private var dismiss
 
+    init(expenseStore: ExpenseStore, quickEntry: QuickEntryRequest? = nil) {
+        self.expenseStore = expenseStore
+        let step: EntryStep
+        switch quickEntry?.method {
+        case .manual: step = .manualEntry
+        case .voice: step = .voiceEntry
+        default: step = .scanReceipt
+        }
+        _currentStep = State(initialValue: step)
+        if let request = quickEntry {
+            _billMode = State(initialValue: .personal)
+            _title = State(initialValue: request.title)
+            if let amount = request.amount {
+                _items = State(initialValue: [BillItemEntry(name: request.title, price: amount, quantity: 1)])
+            }
+        }
+    }
+
     // Entry Steps
     enum EntryStep {
         case scanReceipt   // Direct viewfinder screen
@@ -128,7 +146,7 @@ struct AddExpenseSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "#F6F7FB")
+                BagiTheme.background
                     .ignoresSafeArea()
 
                 switch currentStep {
@@ -171,7 +189,7 @@ struct AddExpenseSheet: View {
                                     Text("Kembali")
                                 }
                                 .font(.subheadline)
-                                .foregroundStyle(Color(hex: "#2D50FF"))
+                                .foregroundStyle(BagiTheme.primary)
                             }
                         }
                     }
@@ -255,7 +273,7 @@ struct AddExpenseSheet: View {
 
                 Text("Posisikan seluruh struk di dalam bingkai.")
                     .font(.system(size: 15))
-                    .foregroundStyle(Color(hex: "#6B7280"))
+                    .foregroundStyle(BagiTheme.muted)
             }
             .padding(.horizontal, 24)
             .padding(.top, 12)
@@ -288,7 +306,7 @@ struct AddExpenseSheet: View {
 
                     Text("Struk tidak terdeteksi")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#1F2937"))
+                        .foregroundStyle(BagiTheme.ink)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
@@ -309,14 +327,14 @@ struct AddExpenseSheet: View {
                         Text("Dari Galeri")
                             .font(.system(size: 13, weight: .medium))
                     }
-                    .foregroundStyle(Color(hex: "#1F2937"))
+                    .foregroundStyle(BagiTheme.ink)
                     .frame(maxWidth: .infinity)
                     .frame(height: 42)
-                    .background(Color.white)
+                    .background(BagiTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                            .stroke(BagiTheme.border, lineWidth: 1)
                     )
                 }
 
@@ -331,14 +349,14 @@ struct AddExpenseSheet: View {
                         Text("Suara")
                             .font(.system(size: 13, weight: .medium))
                     }
-                    .foregroundStyle(Color(hex: "#1F2937"))
+                    .foregroundStyle(BagiTheme.ink)
                     .frame(maxWidth: .infinity)
                     .frame(height: 42)
-                    .background(Color.white)
+                    .background(BagiTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                            .stroke(BagiTheme.border, lineWidth: 1)
                     )
                 }
 
@@ -353,14 +371,14 @@ struct AddExpenseSheet: View {
                         Text("Input Manual")
                             .font(.system(size: 13, weight: .medium))
                     }
-                    .foregroundStyle(Color(hex: "#1F2937"))
+                    .foregroundStyle(BagiTheme.ink)
                     .frame(maxWidth: .infinity)
                     .frame(height: 42)
-                    .background(Color.white)
+                    .background(BagiTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                            .stroke(BagiTheme.border, lineWidth: 1)
                     )
                 }
             }
@@ -377,8 +395,8 @@ struct AddExpenseSheet: View {
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(Color(hex: "#2D50FF"))
+                .frame(minHeight: 52)
+                .background(BagiTheme.action)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .disabled(scannerService.isScanning)
@@ -406,11 +424,11 @@ struct AddExpenseSheet: View {
                 // Header
                 Text("KEDAI SENJA")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Color.black.opacity(0.85))
+                    .foregroundStyle(BagiTheme.paperInk.opacity(0.85))
 
                 Text("16 Okt 2026 • Meja 04")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(Color.gray)
+                    .foregroundStyle(BagiTheme.paperInk.opacity(0.6))
 
                 Divider()
                     .padding(.vertical, 2)
@@ -429,18 +447,18 @@ struct AddExpenseSheet: View {
                 HStack {
                     Text("TOTAL")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.black)
+                        .foregroundStyle(BagiTheme.paperInk)
                     Spacer()
                     Text("Rp138.000")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.black)
+                        .foregroundStyle(BagiTheme.paperInk)
                 }
             }
             .padding(14)
             .frame(width: 215)
-            .background(Color.white)
+            .background(BagiTheme.paper)
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+            .shadow(color: BagiTheme.paperInk.opacity(0.2), radius: 8, x: 0, y: 4)
 
             // Green Pill: "✓ Seluruh struk terlihat"
             VStack {
@@ -448,7 +466,7 @@ struct AddExpenseSheet: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 12))
-                        .foregroundStyle(Color(hex: "#22C55E"))
+                        .foregroundStyle(BagiTheme.success)
                     Text("Seluruh struk terlihat")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.white)
@@ -467,11 +485,11 @@ struct AddExpenseSheet: View {
         HStack {
             Text("\(qty) \(name)")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.8))
+                .foregroundStyle(BagiTheme.paperInk.opacity(0.8))
             Spacer()
             Text(price)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.black.opacity(0.8))
+                .foregroundStyle(BagiTheme.paperInk.opacity(0.8))
         }
     }
 
@@ -494,11 +512,11 @@ struct AddExpenseSheet: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Sudah terbaca.")
                             .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(Color(hex: "#111827"))
+                            .foregroundStyle(BagiTheme.ink)
 
                         Text("Ketuk item untuk mengoreksi.")
                             .font(.system(size: 15))
-                            .foregroundStyle(Color(hex: "#6B7280"))
+                            .foregroundStyle(BagiTheme.muted)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24)
@@ -520,16 +538,16 @@ struct AddExpenseSheet: View {
                                         HStack(alignment: .top) {
                                             Text(items[idx].name)
                                                 .font(.system(size: 16, weight: .semibold))
-                                                .foregroundStyle(Color(hex: "#111827"))
+                                                .foregroundStyle(BagiTheme.ink)
                                             Spacer()
                                             Text(formatRp(items[idx].totalPrice))
                                                 .font(.system(size: 16, weight: .semibold))
-                                                .foregroundStyle(Color(hex: "#111827"))
+                                                .foregroundStyle(BagiTheme.ink)
                                         }
 
                                         Text("\(items[idx].quantity) × \(formatRp(items[idx].price))")
                                             .font(.system(size: 14))
-                                            .foregroundStyle(Color(hex: "#6B7280"))
+                                            .foregroundStyle(BagiTheme.muted)
                                     }
                                     .contentShape(Rectangle())
                                 }
@@ -554,32 +572,32 @@ struct AddExpenseSheet: View {
                             HStack {
                                 Text("Subtotal")
                                     .font(.system(size: 15))
-                                    .foregroundStyle(Color(hex: "#374151"))
+                                    .foregroundStyle(BagiTheme.ink)
                                 Spacer()
                                 Text(formatRp(subtotalAmount))
                                     .font(.system(size: 15))
-                                    .foregroundStyle(Color(hex: "#111827"))
+                                    .foregroundStyle(BagiTheme.ink)
                             }
 
                             HStack {
                                 Text("Pajak")
                                     .font(.system(size: 15))
-                                    .foregroundStyle(Color(hex: "#374151"))
+                                    .foregroundStyle(BagiTheme.ink)
                                 Spacer()
                                 Text(formatRp(taxAmount))
                                     .font(.system(size: 15))
-                                    .foregroundStyle(Color(hex: "#111827"))
+                                    .foregroundStyle(BagiTheme.ink)
                             }
 
                             if serviceAmount > 0 {
                                 HStack {
                                     Text("Layanan")
                                         .font(.system(size: 15))
-                                        .foregroundStyle(Color(hex: "#374151"))
+                                        .foregroundStyle(BagiTheme.ink)
                                     Spacer()
                                     Text(formatRp(serviceAmount))
                                         .font(.system(size: 15))
-                                        .foregroundStyle(Color(hex: "#111827"))
+                                        .foregroundStyle(BagiTheme.ink)
                                 }
                             }
 
@@ -589,17 +607,17 @@ struct AddExpenseSheet: View {
                             HStack {
                                 Text("Total")
                                     .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(Color(hex: "#111827"))
+                                    .foregroundStyle(BagiTheme.ink)
                                 Spacer()
                                 Text(formatRp(grandTotalAmount))
                                     .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(Color(hex: "#111827"))
+                                    .foregroundStyle(BagiTheme.ink)
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
                     }
-                    .background(Color.white)
+                    .background(BagiTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .shadow(color: Color.black.opacity(0.04), radius: 12, x: 0, y: 4)
                     .padding(.horizontal, 20)
@@ -620,7 +638,7 @@ struct AddExpenseSheet: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color(hex: "#2D50FF"))
+                    .background(BagiTheme.action)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .disabled(items.isEmpty)
@@ -633,14 +651,14 @@ struct AddExpenseSheet: View {
                         Text("Simpan Pengeluaran Pribadi")
                             .font(.system(size: 16, weight: .semibold))
                     }
-                    .foregroundStyle(Color(hex: "#1F2937"))
+                    .foregroundStyle(BagiTheme.ink)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color.white)
+                    .background(BagiTheme.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .overlay(
                         RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color(hex: "#D1D5DB"), lineWidth: 1.2)
+                            .stroke(BagiTheme.border, lineWidth: 1.2)
                     )
                 }
                 .disabled(items.isEmpty)
@@ -648,9 +666,9 @@ struct AddExpenseSheet: View {
             .padding(.horizontal, 20)
             .padding(.top, 12)
             .padding(.bottom, 16)
-            .background(Color(hex: "#F6F7FB"))
+            .background(BagiTheme.background)
         }
-        .background(Color(hex: "#F6F7FB"))
+        .background(BagiTheme.background)
     }
 
     // Koreksi Item Bottom Sheet
@@ -909,7 +927,7 @@ struct AddExpenseSheet: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(canAddManualItem ? BagiTheme.primary : Color.gray.opacity(0.4))
+                .background(canAddManualItem ? BagiTheme.action : Color.gray.opacity(0.4))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .disabled(!canAddManualItem)
@@ -1157,7 +1175,7 @@ struct AddExpenseSheet: View {
                     HStack(spacing: 12) {
                         Image(systemName: "person.fill")
                             .font(.title3)
-                            .foregroundStyle(billMode == .personal ? BagiTheme.primary : BagiTheme.muted)
+                            .foregroundStyle(billMode == .personal ? BagiTheme.action : BagiTheme.muted)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Pengeluaran Pribadi")
@@ -1173,14 +1191,14 @@ struct AddExpenseSheet: View {
 
                         Image(systemName: billMode == .personal ? "checkmark.circle.fill" : "circle")
                             .font(.title3)
-                            .foregroundStyle(billMode == .personal ? BagiTheme.primary : BagiTheme.muted)
+                            .foregroundStyle(billMode == .personal ? BagiTheme.action : BagiTheme.muted)
                     }
                     .padding(12)
                     .background(billMode == .personal ? BagiTheme.primary.opacity(0.08) : BagiTheme.soft)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(billMode == .personal ? BagiTheme.primary : Color.clear, lineWidth: 1.5)
+                            .stroke(billMode == .personal ? BagiTheme.action : Color.clear, lineWidth: 1.5)
                     )
                 }
                 .buttonStyle(.plain)
@@ -1229,8 +1247,8 @@ struct AddExpenseSheet: View {
             .font(.headline)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .background(canProceed ? (billMode == .personal ? Color(hex: "#2D50FF") : Color.green) : Color.gray.opacity(0.4))
+            .frame(minHeight: 52)
+            .background(canProceed ? (billMode == .personal ? BagiTheme.action : Color.green) : Color.gray.opacity(0.4))
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
         .disabled(!canProceed)
@@ -1252,7 +1270,7 @@ struct AddExpenseSheet: View {
                 category: category,
                 date: date,
                 note: note.isEmpty ? "Item: \(items.map { "\($0.quantity)x \($0.name)" }.joined(separator: ", "))" : note,
-                inputMethod: .receiptScanner
+                inputMethod: currentStep == .voiceEntry ? .voice : .manual
             )
             expenseStore.addExpense(expense)
             dismiss()

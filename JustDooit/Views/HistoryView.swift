@@ -649,9 +649,6 @@ struct HistoryView: View {
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Daftar Transaksi")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Color(hex: "#111827"))
 
                 Spacer()
 

@@ -136,7 +136,7 @@ struct SplitItemsSection: View {
                                             .fontWeight(.semibold)
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 8)
-                                            .background(item.assignedParticipantIds.count == session.participants.count ? BagiTheme.primary : BagiTheme.soft)
+                                            .background(item.assignedParticipantIds.count == session.participants.count ? BagiTheme.action : BagiTheme.soft)
                                             .foregroundStyle(item.assignedParticipantIds.count == session.participants.count ? .white : .primary)
                                             .clipShape(Capsule())
                                         }

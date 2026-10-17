@@ -97,11 +97,11 @@ struct ProfileView: View {
 
                         HStack {
                             Text("Rp 25.000")
-                                .font(.caption2)
+                                .font(.footnote)
                                 .foregroundStyle(BagiTheme.muted)
                             Spacer()
                             Text("Rp 1.000.000")
-                                .font(.caption2)
+                                .font(.footnote)
                                 .foregroundStyle(BagiTheme.muted)
                         }
                     }
@@ -125,7 +125,7 @@ struct ProfileView: View {
                                             .fontWeight(.medium)
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 6)
-                                            .background(expenseStore.dailyBudgetLimit == preset ? BagiTheme.primary : BagiTheme.soft)
+                                            .background(expenseStore.dailyBudgetLimit == preset ? BagiTheme.action : BagiTheme.soft)
                                             .foregroundStyle(expenseStore.dailyBudgetLimit == preset ? .white : BagiTheme.ink)
                                             .clipShape(Capsule())
                                     }
@@ -175,7 +175,7 @@ struct ProfileView: View {
                                 .fontWeight(.semibold)
                                 .foregroundStyle(BagiTheme.ink)
                             Text("Versi 1.0 • Makan bareng, bayar sesuai porsi")
-                                .font(.caption2)
+                                .font(.footnote)
                                 .foregroundStyle(BagiTheme.muted)
                         }
                         Spacer()
@@ -221,11 +221,11 @@ struct ProfileView: View {
 
             if let firstChar = expenseStore.userName.first, !expenseStore.userName.trimmingCharacters(in: .whitespaces).isEmpty {
                 Text(String(firstChar).uppercased())
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.title3.bold())
                     .foregroundStyle(BagiTheme.primary)
             } else {
                 Image(systemName: "person.fill")
-                    .font(.system(size: 22))
+                    .font(.title3)
                     .foregroundStyle(BagiTheme.primary)
             }
         }

@@ -12,6 +12,21 @@ struct RegressionChecks {
             count += 1
             print("PASS: \(message)")
         }
+        func entry(_ raw: String) -> QuickEntryRequest? { URL(string: raw).flatMap(QuickEntryRequest.init(url:)) }
+        check(entry("bagidooit://scan")?.method == .receiptScanner, "Widget scan route opens receipt entry")
+        check(entry("bagidooit://voice")?.method == .voice, "Widget voice route opens voice entry")
+        check(entry("https://scan") == nil, "Foreign URL schemes cannot open entry")
+        check(entry("bagidooit://unknown") == nil, "Unknown actions are ignored")
+        check(entry("bagidooit://scan/unexpected") == nil, "Unexpected URL paths are ignored")
+        check(entry("bagidooit://expense") == nil, "Incomplete Siri draft is rejected")
+        check(entry("bagidooit://expense?title=Kopi&amount=0") == nil, "Zero amount is rejected")
+        check(entry("bagidooit://expense?title=Kopi&amount=-1") == nil, "Negative amount is rejected")
+        check(entry("bagidooit://expense?title=Kopi&amount=nan") == nil, "Nonfinite amount is rejected")
+        check(entry("bagidooit://expense?title=Kopi&amount=1000000001") == nil, "Excessive amount is rejected")
+        check(entry("bagidooit://expense?title=%20&amount=12000") == nil, "Blank expense title is rejected")
+        let draft = entry("bagidooit://expense?title=Kopi%20%26%20roti&amount=25000")
+        check(draft?.title == "Kopi & roti" && draft?.amount == 25000, "Siri draft preserves encoded title and exact rupiah amount")
+
         let suite = "com.dicoding.bagidooit.regressions.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suite) else { fatalError("Cannot isolate storage") }
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -275,6 +290,18 @@ struct RegressionChecks {
         let onlyThisMonth = FinancialAdvisor.analyze(expenses: monthRecords, now: now)
         let withPriorMonth = FinancialAdvisor.analyze(expenses: monthRecords + [priorMonthExpense], now: now)
         check(SavingsAdviceKey(onlyThisMonth, now: now) == SavingsAdviceKey(withPriorMonth, now: now), "Prior-month edits do not invalidate current-month AI cache")
+
+        let savedSplit = SplitBillSession(title: "Completion regression", participants: [a, b], items: [SplitItem(name: "Meal", price: 40_000, assignedParticipantIds: [a.id, b.id])])
+        store.addSplitSession(savedSplit)
+        store.addSplitSession(savedSplit)
+        check(store.splitSessions.filter { $0.id == savedSplit.id }.count == 1, "Repeated completion does not duplicate the split bill")
+        check(ExpenseStore(defaults: defaults).splitSessions.contains { $0.id == savedSplit.id }, "Completed split bill survives store reload")
+        let unavailable = MockSavingsProvider()
+        unavailable.availabilityIssue = "Saran AI tidak tersedia pada perangkat ini."
+        unavailable.availabilityCanRetry = false
+        let unavailableService = SavingsAIService(provider: unavailable, debounceNanoseconds: 0)
+        unavailableService.refresh(for: facts)
+        check(unavailableService.notice == unavailable.availabilityIssue, "Unavailable AI notification has no extra sentence")
         print("\(count) regression checks passed")
     }
 }

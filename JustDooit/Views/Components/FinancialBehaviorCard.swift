@@ -21,12 +21,10 @@ struct FinancialBehaviorCard: View {
                     FinancialStatusBadge(status: advice.status)
                 }
             }
-            Text(advice.headline).font(.subheadline.bold())
-                .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
                 Text(CurrencyFormatter.format(advice.totalAmount))
-                    .font(.title2.bold())
-                Text("Anggaran sampai hari ini \(CurrencyFormatter.format(advice.periodBudget))")
+                    .font(.largeTitle.bold()).monospacedDigit()
+                Text("Anggaran sampai hari ini: \(CurrencyFormatter.format(advice.periodBudget))")
                     .font(.footnote).foregroundStyle(BagiTheme.muted)
                 if let category = advice.topCategory {
                     VStack(alignment: .leading, spacing: 4) {
@@ -39,14 +37,12 @@ struct FinancialBehaviorCard: View {
             .fixedSize(horizontal: false, vertical: true)
             DisclosureGroup("Lihat rincian", isExpanded: $isExpanded) {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Bulan ini")
-                        .font(.footnote).foregroundStyle(BagiTheme.muted)
                     Text(advice.detailedAdvice)
                         .font(.subheadline)
                         .foregroundStyle(BagiTheme.muted)
                         .fixedSize(horizontal: false, vertical: true)
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), alignment: .leading)], spacing: 12) {
-                        MetricMiniBox(title: "Rata-rata / hari", value: CurrencyFormatter.format(advice.dailyAverage), color: advice.status.badgeColor)
+                        MetricMiniBox(title: "Rata-rata / hari", value: CurrencyFormatter.format(advice.dailyAverage), color: BagiTheme.ink)
                         MetricMiniBox(title: "Batas harian", value: CurrencyFormatter.format(advice.safeDailyLimit), color: BagiTheme.ink)
                     }
                     Divider()
@@ -65,6 +61,7 @@ struct FinancialBehaviorCard: View {
         .padding(BagiTheme.spacing)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(BagiTheme.surface, in: .rect(cornerRadius: BagiTheme.radius))
+        .overlay(RoundedRectangle(cornerRadius: BagiTheme.radius).strokeBorder(BagiTheme.border, lineWidth: 0.5))
         .sheet(isPresented: $showBudgetSheet) {
             BudgetAdjustmentSheet(expenseStore: expenseStore)
         }

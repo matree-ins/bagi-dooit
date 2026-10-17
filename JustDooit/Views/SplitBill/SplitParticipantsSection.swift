@@ -34,7 +34,7 @@ struct SplitParticipantsSection: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(BagiTheme.primary)
+                    .background(BagiTheme.action)
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
@@ -67,7 +67,7 @@ struct SplitParticipantsSection: View {
                                 Text(participant.name.prefix(1).uppercased())
                                     .font(.footnote)
                                     .fontWeight(.bold)
-                                    .foregroundStyle(participant.name == "Saya" ? BagiTheme.primary : Color.green)
+                                    .foregroundStyle(participant.name == "Saya" ? BagiTheme.action : Color.green)
                             }
 
                             VStack(alignment: .leading, spacing: 2) {

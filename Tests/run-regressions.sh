@@ -6,6 +6,7 @@ trap 'rm -rf "$check_dir"' EXIT
 xcrun swiftc -parse-as-library -swift-version 5 -default-isolation MainActor \
   -module-cache-path "$check_dir/modules" \
   "$project_root/JustDooit/Models/ExpenseModel.swift" \
+  "$project_root/JustDooit/Models/QuickEntryRequest.swift" \
   "$project_root/JustDooit/Models/SplitParticipant.swift" \
   "$project_root/JustDooit/Models/SplitItem.swift" \
   "$project_root/JustDooit/Models/SplitBillSession.swift" \

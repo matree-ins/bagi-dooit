@@ -39,11 +39,11 @@ struct OnboardingView: View {
                 Text("Makan bareng.")
                 Text("Bayar sesuai porsi.")
             }
-            .font(.system(size: 32, weight: .bold))
+            .font(.largeTitle.bold())
             .foregroundStyle(BagiTheme.ink)
 
-            Text("Foto atau ceritakan tagihanmu. Bagi sesuai\npesanan.")
-                .font(.system(size: 16, weight: .regular))
+            Text("Foto atau ceritakan tagihanmu. Bagi sesuai pesanan.")
+                .font(.body)
                 .foregroundStyle(BagiTheme.muted)
                 .lineSpacing(4)
         }
@@ -56,17 +56,18 @@ struct OnboardingView: View {
             .scaledToFit()
             .frame(maxWidth: 320)
             .padding(.horizontal, 24)
+            .accessibilityHidden(true)
     }
 
     // MARK: - Action Button
     private var actionButton: some View {
         Button(action: onGetStarted) {
             Text("Mulai Bagi Dooit")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.headline.bold())
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(BagiTheme.primary)
+                .frame(minHeight: 54)
+                .background(BagiTheme.action)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
         }
     }
