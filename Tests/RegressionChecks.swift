@@ -1,5 +1,4 @@
 import Foundation
-import Translation
 
 /// Exercises actual app models with isolated storage, without accessing personal data.
 @main
@@ -181,63 +180,10 @@ struct RegressionChecks {
         let english = MockSavingsProvider()
         english.usesEnglish = true
         english.response = SavingsSuggestion(summary: "Shopping is the largest recorded category.", actions: ["Review purchases before shopping.", "Plan essential spending."])
-        let localizedAI = SavingsAIService(provider: english, debounceNanoseconds: 0)
-        func queueTranslation(_ target: SavingsAIService) async throws -> UUID {
-            target.generate(for: facts)
-            for _ in 0..<100 where target.translationRequest == nil { try await Task.sleep(nanoseconds: 1_000_000) }
-            guard let id = target.translationRequest?.id else { fatalError("Translation not queued") }
-            return id
-        }
-        let translator = MockSavingsTranslator()
-        let pendingID = try await queueTranslation(localizedAI)
-        check(localizedAI.suggestion == nil && localizedAI.isTranslating, "English output stays hidden until all translation completes")
-        await localizedAI.translatePending(using: translator, requestID: pendingID)
-        check(localizedAI.suggestion == translator.result && !localizedAI.isGenerating && translator.prepareCalls == 1, "Summary and every action are translated before publication")
-        localizedAI.refresh(for: facts)
-        check(localizedAI.suggestion == translator.result && !localizedAI.isGenerating, "Translated result is cached and reused")
-        translator.prepareFailure = TranslationError.notInstalled
-        var translationID = try await queueTranslation(localizedAI)
-        await localizedAI.translatePending(using: translator, requestID: translationID)
-        check(localizedAI.suggestion == nil && localizedAI.notice?.contains("Paket bahasa") == true, "Missing language packs keep Indonesian fallback and produce a toast")
-        translator.prepareFailure = SavingsTranslationFailure.unsupported
-        translationID = try await queueTranslation(localizedAI)
-        await localizedAI.translatePending(using: translator, requestID: translationID)
-        check(localizedAI.errorNotice == nil && localizedAI.suggestion == nil && !localizedAI.isGenerating, "Unsupported translation silently retains Indonesian fallback")
-        translator.prepareFailure = URLError(.notConnectedToInternet)
-        translationID = try await queueTranslation(localizedAI)
-        await localizedAI.translatePending(using: translator, requestID: translationID)
-        check(localizedAI.notice?.contains("Koneksi terputus") == true && localizedAI.suggestion == nil, "Offline language preparation never exposes English")
-        translator.prepareFailure = TranslationError.alreadyCancelled
-        translationID = try await queueTranslation(localizedAI)
-        await localizedAI.translatePending(using: translator, requestID: translationID)
-        check(!localizedAI.isGenerating && localizedAI.notice?.contains("terhenti") == true, "Cancelled language preparation ends loading and keeps fallback")
-        translator.prepareFailure = nil
-        translator.result = english.response
-        translationID = try await queueTranslation(localizedAI)
-        await localizedAI.translatePending(using: translator, requestID: translationID)
-        check(localizedAI.suggestion == nil && localizedAI.notice != nil, "Unchanged English response is rejected")
-        translator.result = SavingsSuggestion(summary: "Ringkasan diterjemahkan.", actions: [english.response.actions[0], "Rencanakan belanja."])
-        translationID = try await queueTranslation(localizedAI)
-        await localizedAI.translatePending(using: translator, requestID: translationID)
-        check(localizedAI.suggestion == nil, "Partially translated actions cannot leak English")
-        translator.result = SavingsSuggestion(summary: "Belanja paling besar.", actions: ["Periksa kebutuhan.", "Rencanakan belanja."])
-        translator.failure = NSError(domain: "Synthetic translation failure", code: 1)
-        translationID = try await queueTranslation(localizedAI)
-        await localizedAI.translatePending(using: translator, requestID: translationID)
-        check(localizedAI.suggestion == nil && localizedAI.notice?.contains("diterjemahkan") == true, "Unexpected translation error has a readable fallback toast")
-        translator.failure = nil
-        translator.delay = 40_000_000
-        translationID = try await queueTranslation(localizedAI)
-        let lateID = translationID
-        let translating = Task { await localizedAI.translatePending(using: translator, requestID: lateID) }
-        await Task.yield()
-        localizedAI.pause()
-        await translating.value
-        check(localizedAI.suggestion == nil && localizedAI.errorNotice == nil && !localizedAI.isGenerating, "Background cancellation ignores late translation without an error")
-        let quickTimeout = SavingsAIService(provider: english, timeoutNanoseconds: 10_000_000, debounceNanoseconds: 0)
-        let timeoutID = try await queueTranslation(quickTimeout)
-        await quickTimeout.translatePending(using: translator, requestID: timeoutID)
-        check(quickTimeout.suggestion == nil && quickTimeout.notice?.contains("terlalu lama") == true && translator.wasCancelled, "Translation timeout cancels work and ignores late output")
+        let directAI = SavingsAIService(provider: english, debounceNanoseconds: 0)
+        directAI.refresh(for: facts)
+        for _ in 0..<100 where directAI.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(directAI.suggestion == english.response && directAI.notice == nil, "English AI output is displayed directly without translation")
 
         let sample = Expense(title: "Budget check", amount: 300_000, category: .shopping, date: now)
         let budgets = [50_000.0, 90_000.0, 125_000.0, 200_000.0]

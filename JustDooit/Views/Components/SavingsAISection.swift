@@ -9,16 +9,12 @@ struct SavingsAISection: View {
             Label("Kebiasaan kecil, lebih hemat", systemImage: "lightbulb.fill")
                 .font(.headline)
             if service.isGenerating {
-                ProgressView(service.isTranslating ? "Menerjemahkan saran…" : "Menyiapkan saran…").font(.footnote)
+                ProgressView("Menyiapkan saran…").font(.footnote)
             }
             if let suggestion = service.suggestion {
-                Text("Saran AI")
-                    .font(.caption).foregroundStyle(BagiTheme.muted)
                 Text(suggestion.summary).font(.subheadline)
                 actions(suggestion.actions)
             } else if !service.isGenerating {
-                Text("Saran bawaan")
-                    .font(.caption).foregroundStyle(BagiTheme.muted)
                 actions(SavingsFallback.actions(for: advice))
             }
         }

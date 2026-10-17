@@ -17,12 +17,6 @@ xcrun swiftc -parse-as-library -swift-version 5 -default-isolation MainActor \
   "$project_root/JustDooit/Models/SavingsAdviceKey.swift" \
   "$project_root/JustDooit/Services/SavingsAIErrorMessage.swift" \
   "$project_root/JustDooit/Services/SavingsFallback.swift" \
-  "$project_root/JustDooit/Models/SavingsTranslationRequest.swift" \
-  "$project_root/JustDooit/Models/SavingsTranslationFailure.swift" \
-  "$project_root/JustDooit/Services/SavingsSuggestionTranslating.swift" \
-  "$project_root/JustDooit/Services/SavingsTranslationErrorMessage.swift" \
-  "$project_root/JustDooit/Services/AppleSavingsTranslator.swift" \
-  "$project_root/Tests/MockSavingsTranslator.swift" \
   "$project_root/JustDooit/Models/SavingsSuggestion.swift" \
   "$project_root/JustDooit/Models/GeneratedSavingsSuggestion.swift" \
   "$project_root/JustDooit/Services/SavingsSuggestionProviding.swift" \

@@ -64,7 +64,6 @@ struct ContentView: View {
             if phase == .active { refreshSavings() }
             else if phase == .background { expenseStore.savingsAI.pause() }
         }
-        .modifier(SavingsTranslationModifier(service: expenseStore.savingsAI))
         .overlay(alignment: .top) {
             if let notice = expenseStore.savingsAI.errorNotice, hasCompletedOnboarding {
                 SavingsErrorToast(notice: notice, onRetry: {

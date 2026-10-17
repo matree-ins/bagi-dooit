@@ -12,11 +12,4 @@ struct SavingsSuggestion: Equatable {
             && texts.allSatisfy { $0.rangeOfCharacter(from: .decimalDigits) == nil }
     }
 
-    func isCompleteTranslation(of source: SavingsSuggestion) -> Bool {
-        guard isValid, actions.count == source.actions.count else { return false }
-        return zip([summary] + actions, [source.summary] + source.actions).allSatisfy {
-            $0.0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                != $0.1.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        }
-    }
 }
