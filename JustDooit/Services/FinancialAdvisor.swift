@@ -38,11 +38,17 @@ struct FinancialBehaviorAdvice {
     var headline: String
     var detailedAdvice: String
     var actionPlan: [String]
-    var threeDayTotal: Double
-    var threeDayDailyAverage: Double
+    var totalAmount: Double
+    var dailyAverage: Double
     var safeDailyLimit: Double
     var topCategory: ExpenseCategory?
     var topCategoryAmount: Double
+    var categoryTotals: [ExpenseCategory: Double] = [:]
+    var recordedDayCount: Int = 0
+    var periodDayCount: Int = 0
+    var periodStart: Date? = nil
+
+    var periodBudget: Double { safeDailyLimit * Double(periodDayCount) }
 }
 
 enum FinancialAdvisor {
@@ -53,30 +59,32 @@ enum FinancialAdvisor {
     ) -> FinancialBehaviorAdvice {
         let calendar = Calendar.current
 
-        // Filter expenses for the last 3 days (inclusive of today)
-        guard let threeDaysAgo = calendar.date(byAdding: .day, value: -2, to: calendar.startOfDay(for: now)) else {
-            return fallbackAdvice(dailyBudget: dailyBudgetLimit)
+        guard let periodStart = calendar.dateInterval(of: .month, for: now)?.start else {
+            return fallbackAdvice(dailyBudget: dailyBudgetLimit, now: now)
         }
-
-        let threeDayExpenses = expenses.filter { $0.date >= threeDaysAgo && $0.date <= now && $0.amount.isFinite && $0.amount > 0 }
-        guard !threeDayExpenses.isEmpty, dailyBudgetLimit.isFinite, dailyBudgetLimit > 0 else {
-            return fallbackAdvice(dailyBudget: dailyBudgetLimit)
+        let validExpenses = expenses.filter { $0.date >= periodStart && $0.date <= now && $0.amount.isFinite && $0.amount > 0 }
+        guard !validExpenses.isEmpty, dailyBudgetLimit.isFinite, dailyBudgetLimit > 0 else {
+            return fallbackAdvice(dailyBudget: dailyBudgetLimit, now: now)
         }
-        let threeDayTotal = threeDayExpenses.reduce(0) { $0 + $1.amount }
-        guard threeDayTotal.isFinite else { return fallbackAdvice(dailyBudget: dailyBudgetLimit) }
-        let threeDayAverage = threeDayTotal / 3.0
+        let totalAmount = validExpenses.reduce(0) { $0 + $1.amount }
+        guard totalAmount.isFinite else { return fallbackAdvice(dailyBudget: dailyBudgetLimit, now: now) }
+        let periodDayCount = max(1, (calendar.dateComponents([.day], from: periodStart, to: calendar.startOfDay(for: now)).day ?? 0) + 1)
+        let dailyAverage = totalAmount / Double(periodDayCount)
 
-        // Find highest spending category in last 3 days
+        // Summarize every valid expense in the current month.
         var categoryTotals: [ExpenseCategory: Double] = [:]
-        for exp in threeDayExpenses {
+        for exp in validExpenses {
             categoryTotals[exp.category, default: 0] += exp.amount
         }
-        let topCategoryEntry = categoryTotals.max(by: { $0.value < $1.value })
+        let recordedDayCount = Set(validExpenses.map { calendar.startOfDay(for: $0.date) }).count
+        let topCategoryEntry = categoryTotals.sorted {
+            $0.value == $1.value ? $0.key.rawValue < $1.key.rawValue : $0.value > $1.value
+        }.first
         let topCategory = topCategoryEntry?.key
         let topCategoryAmount = topCategoryEntry?.value ?? 0
 
-        // Determine status based on ratio of 3-day average to safe daily budget
-        let ratio = threeDayAverage / dailyBudgetLimit
+        // Compare the month-to-date calendar average with the daily budget.
+        let ratio = dailyAverage / dailyBudgetLimit
 
         let status: FinancialStatus
         let headline: String
@@ -94,43 +102,48 @@ enum FinancialAdvisor {
             headline = "Rata-rata pengeluaran di bawah anggaran"
         }
         let comparison: String
-        if threeDayAverage > dailyBudgetLimit {
-            comparison = "Melebihi anggaran harian sebesar \(CurrencyFormatter.format(threeDayAverage - dailyBudgetLimit))."
+        if dailyAverage > dailyBudgetLimit {
+            comparison = "Melebihi anggaran harian sebesar \(CurrencyFormatter.format(dailyAverage - dailyBudgetLimit))."
         } else {
-            comparison = "Selisih terhadap anggaran harian sebesar \(CurrencyFormatter.format(dailyBudgetLimit - threeDayAverage))."
+            comparison = "Selisih terhadap anggaran harian sebesar \(CurrencyFormatter.format(dailyBudgetLimit - dailyAverage))."
         }
-        var detailedAdvice = "Rata-rata pengeluaran tercatat selama 3 hari adalah \(CurrencyFormatter.format(threeDayAverage))/hari, atau \(ratio.formatted(.percent.precision(.fractionLength(0)))) dari anggaran harian \(CurrencyFormatter.format(dailyBudgetLimit)). \(comparison)"
-        if let topCategory {
-            detailedAdvice += " Kategori terbesar adalah \(topCategory.rawValue), sebesar \(CurrencyFormatter.format(topCategoryAmount))."
-        }
-        detailedAdvice += " Rata-rata dihitung dari total dibagi tiga; hari tanpa catatan dihitung nol."
+        let detailedAdvice = "Rata-rata tercatat \(CurrencyFormatter.format(dailyAverage))/hari, sekitar \(ratio.formatted(.percent.precision(.fractionLength(0...2)))) dari anggaran. \(comparison)"
 
         var advice = FinancialBehaviorAdvice(
             status: status,
             headline: headline,
             detailedAdvice: detailedAdvice,
             actionPlan: [],
-            threeDayTotal: threeDayTotal,
-            threeDayDailyAverage: threeDayAverage,
+            totalAmount: totalAmount,
+            dailyAverage: dailyAverage,
             safeDailyLimit: dailyBudgetLimit,
             topCategory: topCategory,
-            topCategoryAmount: topCategoryAmount
+            topCategoryAmount: topCategoryAmount,
+            categoryTotals: categoryTotals,
+            recordedDayCount: recordedDayCount,
+            periodDayCount: periodDayCount,
+            periodStart: periodStart
         )
         advice.actionPlan = SavingsFallback.actions(for: advice)
         return advice
     }
 
-    private static func fallbackAdvice(dailyBudget: Double) -> FinancialBehaviorAdvice {
-        FinancialBehaviorAdvice(
+    private static func fallbackAdvice(dailyBudget: Double, now: Date) -> FinancialBehaviorAdvice {
+        let calendar = Calendar.current
+        let start = calendar.dateInterval(of: .month, for: now)?.start ?? calendar.startOfDay(for: now)
+        let elapsed = max(1, (calendar.dateComponents([.day], from: start, to: calendar.startOfDay(for: now)).day ?? 0) + 1)
+        return FinancialBehaviorAdvice(
             status: .insufficientData,
             headline: "Belum ada ringkasan pengeluaran",
-            detailedAdvice: "Catat pengeluaran dalam 3 hari terakhir dan tetapkan anggaran harian yang valid untuk melihat perbandingan.",
+            detailedAdvice: "Catat pengeluaran dan tetapkan anggaran harian yang valid untuk melihat ringkasan bulan ini.",
             actionPlan: ["Input transaksi lewat manual, suara, atau scan struk."],
-            threeDayTotal: 0,
-            threeDayDailyAverage: 0,
+            totalAmount: 0,
+            dailyAverage: 0,
             safeDailyLimit: dailyBudget.isFinite && dailyBudget > 0 ? dailyBudget : 0,
             topCategory: nil,
-            topCategoryAmount: 0
+            topCategoryAmount: 0,
+            periodDayCount: elapsed,
+            periodStart: start
         )
     }
 }

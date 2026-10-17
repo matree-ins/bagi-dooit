@@ -1,7 +1,9 @@
-# Automatic spending suggestions
+# Monthly Tips Hemat
 
-Suggestions generate automatically after onboarding and when expense or budget data changes. Generation uses Foundation Models locally and displays the original supported language directly, without a translation step, language downloads or translation permission prompts.
+Totals, category distribution, budget comparison and AI context use the current calendar month, from its first day through now. Previous-month and future expenses are excluded. Daily average equals month-to-date recorded total divided by elapsed calendar days, not only days containing transactions. Budget-to-date is daily budget multiplied by the same elapsed-day count. Missing-day coverage remains explicit in details.
 
-The suggestions remain inside Lihat rincian under Kebiasaan kecil, lebih hemat. Loading is shown while generating; model failures use a global toast with friendly Indonesian text and an appropriate retry action. Data-aware fallback tips remain labelled Saran bawaan. Totals and budget status are deterministic.
+The header says Pengeluaran bulan ini and the category section says Kategori bulan ini. The period starts on the first of the month and resets automatically at a new month. Cache keys include the month start, elapsed day count and current-month data, so prior-month edits do not trigger model generation.
 
-Run `bash Tests/run-regressions.sh` for model/state tests, including direct English display, budget changes, stale output, unavailable models, cancellation, network errors, timeout, caching and threshold boundaries. Physical-device airplane-mode and accessibility validation remain separate.
+Suggestions stay inside details, generate automatically, use the supported model language without translation and reuse valid cached advice for unchanged data. A small accessible spinner replaces loading text; source labels are hidden. Error handling continues through one root toast with duplicate automatic errors suppressed.
+
+Run `bash Tests/run-regressions.sh`. Calendar tests include month boundaries, an empty new month, first-day denominator, leap-year February, previous-month cache isolation, budget thresholds and invalid inputs. Physical iPhone layout and offline behavior still require device validation.

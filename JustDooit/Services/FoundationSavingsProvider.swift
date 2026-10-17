@@ -46,7 +46,7 @@ struct FoundationSavingsProvider: SavingsSuggestionProviding {
             """)
         let status: String
         switch advice.status {
-        case .insufficientData: status = "insufficient records"
+        case .insufficientData: status = "insufficient records or invalid daily budget; no budget conclusion is justified"
         case .hemat: status = "recorded average within sixty percent of daily budget"
         case .normal: status = "recorded average within daily budget"
         case .warning: status = "recorded average above daily budget"
@@ -65,30 +65,38 @@ struct FoundationSavingsProvider: SavingsSuggestionProviding {
         case .insufficientData:
             budgetGuidance = "Ask the user to complete records before judging the budget."
         }
-        let category: String
-        switch advice.topCategory {
-        case .food: category = "food and drinks"
-        case .transport: category = "transport"
-        case .shopping: category = "shopping"
-        case .bills: category = "bills and utilities"
-        case .entertainment: category = "entertainment"
-        case .health: category = "health"
-        case .other: category = "other"
-        case nil: category = "unknown"
-        }
+        let category = categoryName(advice.topCategory)
+        let distribution = advice.categoryTotals.sorted {
+            $0.value == $1.value ? $0.key.rawValue < $1.key.rawValue : $0.value > $1.value
+        }.map { "\(categoryName($0.key)): \($0.value)" }.joined(separator: "; ")
         let response = try await session.respond(to: """
-            Trusted app summary, covering today and the previous two calendar days:
+            Trusted app summary for the current calendar month, from its first day through today:
+            Number of calendar days with records: \(advice.recordedDayCount) out of \(advice.periodDayCount).
+            The recorded total is divided by elapsed calendar days since the first day of this month, including days without records. Missing records are not proof of zero spending.
             Records may be incomplete. Status: \(status).
-            Recorded total: \(advice.threeDayTotal).
-            Calendar daily average: \(advice.threeDayDailyAverage).
+            Recorded total: \(advice.totalAmount).
+            Calendar daily average: \(advice.dailyAverage).
             Daily budget: \(advice.safeDailyLimit).
-            Unused daily allowance based on the recorded calendar average: \(max(0, advice.safeDailyLimit - advice.threeDayDailyAverage)).
+            Unused daily allowance based on the recorded calendar average: \(max(0, advice.safeDailyLimit - advice.dailyAverage)).
             Budget-specific guidance: \(budgetGuidance)
             Tailor the actions to this budget situation as well as the largest category. Do not use the same restrictive advice for an under-budget situation as for an over-budget situation.
+            Recorded category totals for the same period: \(distribution).
             Largest recorded category: \(category), amount: \(advice.topCategoryAmount).
             Describe the spending pattern and suggest practical habits without repeating any figures.
             """, generating: GeneratedSavingsSuggestion.self,
             options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 450))
         return SavingsSuggestion(summary: response.content.summary, actions: response.content.actions)
+    }
+    private func categoryName(_ category: ExpenseCategory?) -> String {
+        switch category {
+        case .food: return "food and drinks"
+        case .transport: return "transport"
+        case .shopping: return "shopping"
+        case .bills: return "bills and utilities"
+        case .entertainment: return "entertainment"
+        case .health: return "health"
+        case .other: return "other"
+        case nil: return "unknown"
+        }
     }
 }

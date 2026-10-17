@@ -11,7 +11,7 @@ struct BudgetAdjustmentSheet: View {
                 VStack(spacing: 8) {
                     Text("Target Batas Pengeluaran Harian")
                         .font(.headline)
-                    Text("Advisor akan menghitung apakah kamu perlu 'Lebih Hemat' berdasarkan batas ini terhadap pengeluaran 3 hari terakhir.")
+                    Text("Bandingkan anggaran ini dengan rata-rata harian dari catatan pengeluaran bulan ini.")
                         .font(.footnote)
                         .foregroundStyle(BagiTheme.muted)
                         .multilineTextAlignment(.center)

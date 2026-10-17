@@ -3,7 +3,7 @@ import Foundation
 @MainActor
 enum SavingsFallback {
     static func actions(for advice: FinancialBehaviorAdvice) -> [String] {
-        guard advice.threeDayTotal > 0 else {
+        guard advice.totalAmount > 0 else {
             return ["Catat pengeluaran untuk mendapatkan saran yang sesuai kebiasaanmu."]
         }
         let categoryTip: String

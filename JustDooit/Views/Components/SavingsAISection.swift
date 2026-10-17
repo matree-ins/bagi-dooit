@@ -6,15 +6,19 @@ struct SavingsAISection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Kebiasaan kecil, lebih hemat", systemImage: "lightbulb.fill")
-                .font(.headline)
-            if service.isGenerating {
-                ProgressView("Menyiapkan saran…").font(.footnote)
+            HStack {
+                Label("Kebiasaan kecil, lebih hemat", systemImage: "lightbulb.fill")
+                    .font(.headline)
+                Spacer(minLength: 8)
+                if service.isGenerating {
+                    ProgressView().controlSize(.small)
+                        .accessibilityLabel("Memperbarui saran")
+                }
             }
             if let suggestion = service.suggestion {
                 Text(suggestion.summary).font(.subheadline)
                 actions(suggestion.actions)
-            } else if !service.isGenerating {
+            } else {
                 actions(SavingsFallback.actions(for: advice))
             }
         }

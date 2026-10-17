@@ -32,19 +32,20 @@ struct AnalyticsView: View {
 
     private var categoryBreakdownSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Pengeluaran per Kategori")
+            Text("Kategori bulan ini")
                 .font(.headline)
 
-            let categoryMap = computeCategoryTotals()
+            let advice = expenseStore.currentAdvice
+            let categoryMap = advice.categoryTotals
 
             if categoryMap.isEmpty {
                 Text("Belum ada data pengeluaran.")
                     .font(.footnote)
                     .foregroundStyle(BagiTheme.muted)
             } else {
-                let total = max(1, expenseStore.totalExpensesAllTime)
+                let total = max(1, advice.totalAmount)
                 VStack(spacing: 12) {
-                    ForEach(categoryMap.sorted(by: { $0.value > $1.value }), id: \.key) { cat, amount in
+                    ForEach(categoryMap.sorted(by: { $0.value == $1.value ? $0.key.rawValue < $1.key.rawValue : $0.value > $1.value }), id: \.key) { cat, amount in
                         VStack(spacing: 6) {
                             HStack {
                                 HStack(spacing: 6) {
@@ -82,14 +83,6 @@ struct AnalyticsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
             }
         }
-    }
-
-    private func computeCategoryTotals() -> [ExpenseCategory: Double] {
-        var map: [ExpenseCategory: Double] = [:]
-        for exp in expenseStore.expenses {
-            map[exp.category, default: 0] += exp.amount
-        }
-        return map
     }
 
 }

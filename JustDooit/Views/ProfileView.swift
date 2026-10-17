@@ -62,7 +62,7 @@ struct ProfileView: View {
                                 .foregroundStyle(BagiTheme.primary)
                                 .multilineTextAlignment(.trailing)
                                 .frame(minWidth: 90, maxWidth: 140)
-                                .onChange(of: manualBudgetText) { newValue in
+                                .onChange(of: manualBudgetText) { _, newValue in
                                     let digits = newValue.filter { $0.isNumber }
                                     if let val = Double(digits), val > 0 {
                                         if val != expenseStore.dailyBudgetLimit {
@@ -138,7 +138,7 @@ struct ProfileView: View {
                 } header: {
                     Text("Batas Anggaran Harian")
                 } footer: {
-                    Text("Financial Advisor menggunakan batas ini untuk menghitung status kesehatan pengeluaran 3 hari terakhir Anda.")
+                    Text("Anggaran ini dibandingkan dengan rata-rata harian dari catatan pengeluaran bulan ini.")
                 }
 
                 // MARK: - Section 3: Preferensi & Data

@@ -55,8 +55,15 @@ struct ContentView: View {
             }
         }
         .task(id: hasCompletedOnboarding) {
-            if hasCompletedOnboarding { refreshSavings() }
-            else { expenseStore.savingsAI.pause() }
+            guard hasCompletedOnboarding else { expenseStore.savingsAI.pause(); return }
+            refreshSavings()
+            while !Task.isCancelled {
+                let now = Date()
+                guard let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) else { return }
+                do { try await Task.sleep(for: .seconds(max(1, nextDay.timeIntervalSinceNow + 1))) }
+                catch { return }
+                refreshSavings()
+            }
         }
         .onChange(of: expenseStore.expenses) { _, _ in refreshSavings() }
         .onChange(of: expenseStore.dailyBudgetLimit) { _, _ in refreshSavings() }
@@ -77,6 +84,7 @@ struct ContentView: View {
 
     private func refreshSavings() {
         guard hasCompletedOnboarding, scenePhase == .active else { return }
+        expenseStore.refreshAnalysisDay()
         expenseStore.savingsAI.refresh(for: expenseStore.currentAdvice)
     }
 }
