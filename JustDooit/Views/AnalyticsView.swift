@@ -18,14 +18,15 @@ struct AnalyticsView: View {
                     // Category Breakdown
                     categoryBreakdownSection
 
-                    // Educational Hemat Tips
-                    hematTipsSection
                 }
                 .padding()
                 .padding(.bottom, 30)
             }
             .bagiScreen()
             .navigationTitle("Tips hemat")
+            .refreshable {
+                expenseStore.savingsAI.refresh(for: expenseStore.currentAdvice, force: true)
+            }
         }
     }
 
@@ -91,57 +92,4 @@ struct AnalyticsView: View {
         return map
     }
 
-    private var hematTipsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundStyle(.yellow)
-                Text("Kebiasaan kecil, lebih hemat")
-                    .font(.headline)
-            }
-
-            VStack(spacing: 10) {
-                tipRow(
-                    icon: "clock.badge.checkmark",
-                    title: "Aturan 48 Jam",
-                    desc: "Tunda pembelian barang non-esensial selama 2 hari sebelum checkout untuk mencegah impulsive buying."
-                )
-
-                tipRow(
-                    icon: "cup.and.saucer.fill",
-                    title: "Substitusi Kopi & Jajan",
-                    desc: "Buat kopi sendiri di rumah atau kantor 3 kali seminggu, hemat hingga Rp 300.000/bulan."
-                )
-
-                tipRow(
-                    icon: "chart.line.downtrend.xyaxis",
-                    title: "Evaluasi 3 Hari Rutin",
-                    desc: "Pantau pengeluaran 3 harian untuk mendeteksi lonjakan biaya sebelum membengkak di akhir bulan."
-                )
-            }
-        }
-    }
-
-    private func tipRow(icon: String, title: String, desc: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(BagiTheme.primary)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Text(desc)
-                    .font(.footnote)
-                    .foregroundStyle(BagiTheme.muted)
-                    .lineSpacing(2)
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BagiTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
-    }
 }

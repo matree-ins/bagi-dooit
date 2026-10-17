@@ -6,6 +6,7 @@
 import SwiftUI
 
 enum FinancialStatus: String {
+    case insufficientData = "Belum cukup data"
     case hemat = "Hemat & Sehat"
     case normal = "Terkontrol"
     case warning = "Perlu Waspada"
@@ -13,6 +14,7 @@ enum FinancialStatus: String {
 
     var badgeColor: Color {
         switch self {
+        case .insufficientData: return .gray
         case .hemat: return .green
         case .normal: return .blue
         case .warning: return .orange
@@ -22,6 +24,7 @@ enum FinancialStatus: String {
 
     var icon: String {
         switch self {
+        case .insufficientData: return "tray"
         case .hemat: return "leaf.fill"
         case .normal: return "checkmark.shield.fill"
         case .warning: return "exclamationmark.triangle.fill"
@@ -45,17 +48,20 @@ struct FinancialBehaviorAdvice {
 enum FinancialAdvisor {
     static func analyze(
         expenses: [Expense],
-        dailyBudgetLimit: Double = 150_000
+        dailyBudgetLimit: Double = 150_000,
+        now: Date = Date()
     ) -> FinancialBehaviorAdvice {
         let calendar = Calendar.current
-        let now = Date()
 
         // Filter expenses for the last 3 days (inclusive of today)
         guard let threeDaysAgo = calendar.date(byAdding: .day, value: -2, to: calendar.startOfDay(for: now)) else {
             return fallbackAdvice(dailyBudget: dailyBudgetLimit)
         }
 
-        let threeDayExpenses = expenses.filter { $0.date >= threeDaysAgo }
+        let threeDayExpenses = expenses.filter { $0.date >= threeDaysAgo && $0.date <= now && $0.amount.isFinite && $0.amount > 0 }
+        guard !threeDayExpenses.isEmpty, dailyBudgetLimit.isFinite, dailyBudgetLimit > 0 else {
+            return fallbackAdvice(dailyBudget: dailyBudgetLimit)
+        }
         let threeDayTotal = threeDayExpenses.reduce(0) { $0 + $1.amount }
         let threeDayAverage = threeDayTotal / 3.0
 
@@ -134,7 +140,7 @@ enum FinancialAdvisor {
 
     private static func fallbackAdvice(dailyBudget: Double) -> FinancialBehaviorAdvice {
         FinancialBehaviorAdvice(
-            status: .hemat,
+            status: .insufficientData,
             headline: "Mulai Catat Pengeluaranmu",
             detailedAdvice: "Belum ada cukup transaksi dalam 3 hari terakhir. Mulai catat transaksi untuk mendapatkan saran finansial cerdas!",
             actionPlan: ["Input transaksi lewat manual, suara, atau scan struk."],

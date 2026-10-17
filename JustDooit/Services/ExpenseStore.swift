@@ -16,14 +16,18 @@ class ExpenseStore: ObservableObject {
     @Published var expenses: [Expense] = [] {
         didSet {
             saveToStorage()
+            savingsAI.invalidate()
         }
     }
 
     @Published var dailyBudgetLimit: Double = 150_000 {
         didSet {
             defaults.set(dailyBudgetLimit, forKey: "DailyBudgetLimitKey")
+            savingsAI.invalidate()
         }
     }
+
+    let savingsAI = SavingsAIService(provider: FoundationSavingsProvider())
 
     private let storageKey = "JustDooit_Expenses_v1"
     private let defaults: UserDefaults

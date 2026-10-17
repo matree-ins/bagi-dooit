@@ -23,7 +23,7 @@ struct FinancialBehaviorCard: View {
             }
             Text(advice.headline).font(.subheadline.bold())
                 .fixedSize(horizontal: false, vertical: true)
-            DisclosureGroup("Lihat rincian & saran", isExpanded: $isExpanded) {
+            DisclosureGroup("Lihat rincian", isExpanded: $isExpanded) {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(advice.detailedAdvice)
                         .font(.subheadline)
@@ -34,11 +34,8 @@ struct FinancialBehaviorCard: View {
                         MetricMiniBox(title: "Rata-rata / hari", value: CurrencyFormatter.format(advice.threeDayDailyAverage), color: advice.status.badgeColor)
                         MetricMiniBox(title: "Batas harian", value: CurrencyFormatter.format(advice.safeDailyLimit), color: BagiTheme.ink)
                     }
-                    ForEach(advice.actionPlan, id: \.self) { tip in
-                        Label(tip, systemImage: "checkmark.circle")
-                            .font(.subheadline)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    Divider()
+                    SavingsAISection(service: expenseStore.savingsAI, advice: advice)
                 }
                 .padding(.top, 12)
             }

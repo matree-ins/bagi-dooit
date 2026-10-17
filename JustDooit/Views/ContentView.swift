@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @StateObject private var expenseStore = ExpenseStore()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .home
 
     var body: some View {
@@ -53,6 +54,31 @@ struct ContentView: View {
                 .tint(BagiTheme.primary)
             }
         }
+        .task(id: hasCompletedOnboarding) {
+            if hasCompletedOnboarding { refreshSavings() }
+            else { expenseStore.savingsAI.pause() }
+        }
+        .onChange(of: expenseStore.expenses) { _, _ in refreshSavings() }
+        .onChange(of: expenseStore.dailyBudgetLimit) { _, _ in refreshSavings() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refreshSavings() }
+            else if phase == .background { expenseStore.savingsAI.pause() }
+        }
+        .modifier(SavingsTranslationModifier(service: expenseStore.savingsAI))
+        .overlay(alignment: .top) {
+            if let notice = expenseStore.savingsAI.errorNotice, hasCompletedOnboarding {
+                SavingsErrorToast(notice: notice, onRetry: {
+                    expenseStore.savingsAI.refresh(for: expenseStore.currentAdvice, force: true)
+                }, onDismiss: { expenseStore.savingsAI.dismissError() })
+                .id(notice.id)
+                .padding(.top, 8)
+            }
+        }
+    }
+
+    private func refreshSavings() {
+        guard hasCompletedOnboarding, scenePhase == .active else { return }
+        expenseStore.savingsAI.refresh(for: expenseStore.currentAdvice)
     }
 }
 

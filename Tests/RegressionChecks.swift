@@ -1,10 +1,11 @@
 import Foundation
+import Translation
 
 /// Exercises actual app models with isolated storage, without accessing personal data.
 @main
 struct RegressionChecks {
     @MainActor
-    static func main() throws {
+    static func main() async throws {
         var count = 0
         func check(_ condition: @autoclosure () -> Bool, _ message: String) {
             precondition(condition(), message)
@@ -47,6 +48,196 @@ struct RegressionChecks {
         check(first.totalAmount == second.totalAmount && first != second, "Equal totals do not hide a different receipt")
         let decoded = try JSONDecoder().decode([Expense].self, from: JSONEncoder().encode([Expense]()))
         check(decoded.isEmpty, "An empty stored list is valid data")
+
+        let now = Date()
+        let emptyAdvice = FinancialAdvisor.analyze(expenses: [], now: now)
+        check(emptyAdvice.status == .insufficientData, "Empty history is not labelled healthy spending")
+        let future = Expense(title: "Future", amount: 999_000, category: .shopping, date: now.addingTimeInterval(86_400))
+        check(FinancialAdvisor.analyze(expenses: [future], now: now).threeDayTotal == 0, "Future expenses are excluded from AI facts")
+        let facts = FinancialAdvisor.analyze(expenses: [expense], now: now)
+        let mock = MockSavingsProvider()
+        let ai = SavingsAIService(provider: mock, debounceNanoseconds: 0)
+        ai.generate(for: emptyAdvice)
+        check(ai.notice == nil && mock.calls == 0 && !ai.isGenerating, "Empty data never triggers AI")
+        mock.availabilityIssue = "Model unavailable"
+        ai.generate(for: facts)
+        check(ai.notice?.contains("Model unavailable") == true && mock.calls == 0, "Unavailable AI keeps fallback")
+        mock.availabilityIssue = nil
+        ai.generate(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.suggestion == mock.response && ai.notice == nil, "Valid generated advice is displayed")
+        check(facts.threeDayTotal == expense.amount, "AI generation does not change expense totals")
+        mock.response = SavingsSuggestion(summary: "Hemat 50000 rupiah", actions: ["Satu tindakan"])
+        ai.generate(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.suggestion == nil && ai.notice != nil, "Malformed or numerical generated advice is rejected")
+        mock.shouldFail = true
+        ai.generate(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.suggestion == nil && ai.notice != nil && !ai.isGenerating, "Generation failure restores fallback")
+        mock.shouldFail = false
+        mock.delay = 50_000_000
+        ai.generate(for: facts)
+        await Task.yield()
+        ai.invalidate()
+        try await Task.sleep(nanoseconds: 60_000_000)
+        check(ai.suggestion == nil && ai.notice == nil && !ai.isGenerating, "Cancelled generation cannot publish stale advice")
+        store.savingsAI.generate(for: emptyAdvice)
+        store.dailyBudgetLimit += 1
+        check(store.savingsAI.notice == nil, "Budget changes invalidate cached advice")
+        store.savingsAI.generate(for: emptyAdvice)
+        store.addExpense(expense)
+        check(store.savingsAI.notice == nil, "Expense changes invalidate cached advice")
+
+        check(!SavingsSuggestion(summary: "Angka 100", actions: ["Periksa kebutuhan.", "Rencanakan belanja."]).isValid, "Numerical AI claims are rejected even with valid action count")
+        check(!SavingsSuggestion(summary: "Ringkasan", actions: ["Sama", "Sama"]).isValid, "Duplicate AI actions are rejected")
+        check(!SavingsSuggestion(summary: " ", actions: ["Periksa kebutuhan.", "Rencanakan belanja."]).isValid, "Empty AI summaries are rejected")
+
+        mock.response = SavingsSuggestion(summary: "Belanja mendominasi pengeluaran tercatat.", actions: ["Buat daftar kebutuhan.", "Tinjau pembelian yang belum diperlukan."])
+        mock.delay = 0
+        mock.failure = nil
+        ai.invalidate()
+        let before = mock.calls
+        ai.refresh(for: facts)
+        ai.refresh(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        ai.refresh(for: facts)
+        check(mock.calls == before + 1 && ai.suggestion != nil, "Automatic refresh deduplicates in-flight and cached requests")
+        mock.failure = URLError(.notConnectedToInternet)
+        ai.generate(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.errorNotice?.message.contains("Koneksi terputus") == true && ai.errorNotice?.canRetry == true, "Connectivity failure produces a friendly retryable toast event")
+        let failedCalls = mock.calls
+        let errorID = ai.errorNotice?.id
+        ai.refresh(for: facts)
+        check(mock.calls == failedCalls && ai.errorNotice?.id == errorID, "Repeated renders do not duplicate failed requests or toast events")
+        ai.dismissError()
+        ai.refresh(for: facts)
+        check(ai.errorNotice == nil && mock.calls == failedCalls, "Dismissed errors stay dismissed during cooldown")
+        mock.failure = nil
+        ai.generate(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.suggestion != nil && ai.errorNotice == nil, "Explicit retry recovers after connection failure")
+        mock.failure = URLError(.timedOut)
+        ai.generate(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.notice?.contains("terlalu lama") == true, "Provider timeout has a readable message")
+        mock.failure = CancellationError()
+        ai.generate(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.errorNotice == nil && !ai.isGenerating, "Cancellation does not show an error toast")
+        mock.failure = nil
+        mock.delay = 100_000_000
+        let timeoutAI = SavingsAIService(provider: mock, timeoutNanoseconds: 5_000_000, debounceNanoseconds: 0)
+        timeoutAI.refresh(for: facts)
+        try await Task.sleep(nanoseconds: 20_000_000)
+        check(!timeoutAI.isGenerating && timeoutAI.suggestion == nil && timeoutAI.notice?.contains("terlalu lama") == true, "Watchdog stops hung generation and ignores its late result")
+        let debounceAI = SavingsAIService(provider: mock, debounceNanoseconds: 40_000_000)
+        let beforeDebounce = mock.calls
+        debounceAI.refresh(for: facts)
+        debounceAI.invalidate()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        check(mock.calls == beforeDebounce && debounceAI.notice == nil, "Debounced request cancels silently before calling model")
+        mock.delay = 0
+        mock.availabilityIssue = "Aktifkan Apple Intelligence."
+        mock.availabilityCanRetry = false
+        ai.generate(for: facts)
+        check(ai.errorNotice?.canRetry == false, "Unsupported or disabled model does not offer a pointless retry")
+        mock.availabilityIssue = nil
+        ai.refresh(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.suggestion != nil, "Model becoming ready bypasses failed-attempt cooldown")
+        ai.pause()
+        ai.refresh(for: facts)
+        check(ai.suggestion != nil && !ai.isGenerating, "Completed advice is reused after foreground return")
+        let fallback = SavingsFallback.actions(for: facts)
+        check(!fallback.isEmpty && fallback != SavingsFallback.actions(for: emptyAdvice), "Fallback tips depend on actual data and handle empty history")
+
+        mock.failure = URLError(.cancelled)
+        ai.generate(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(ai.errorNotice == nil && !ai.isGenerating, "System URL cancellation stays silent")
+        mock.failure = nil
+        mock.delay = 40_000_000
+        ai.invalidate()
+        let startCalls = mock.calls
+        ai.refresh(for: facts)
+        for _ in 0..<100 where mock.calls == startCalls { try await Task.sleep(nanoseconds: 1_000_000) }
+        mock.response = SavingsSuggestion(summary: "Ringkasan terbaru.", actions: ["Periksa kebutuhan terbaru.", "Tinjau anggaran terbaru."])
+        var changedFacts = facts
+        changedFacts.safeDailyLimit += 25_000
+        ai.refresh(for: changedFacts)
+        try await Task.sleep(nanoseconds: 60_000_000)
+        check(ai.suggestion == mock.response, "Older generation cannot overwrite changed-budget advice")
+        mock.delay = 0
+        ai.invalidate()
+        ai.refresh(for: facts)
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        let beforeNextDay = mock.calls
+        ai.refresh(for: facts, now: now.addingTimeInterval(86_400))
+        for _ in 0..<100 where ai.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        check(mock.calls == beforeNextDay + 1, "A new calendar day refreshes cached advice")
+
+        let english = MockSavingsProvider()
+        english.usesEnglish = true
+        english.response = SavingsSuggestion(summary: "Shopping is the largest recorded category.", actions: ["Review purchases before shopping.", "Plan essential spending."])
+        let localizedAI = SavingsAIService(provider: english, debounceNanoseconds: 0)
+        func queueTranslation(_ target: SavingsAIService) async throws -> UUID {
+            target.generate(for: facts)
+            for _ in 0..<100 where target.translationRequest == nil { try await Task.sleep(nanoseconds: 1_000_000) }
+            guard let id = target.translationRequest?.id else { fatalError("Translation not queued") }
+            return id
+        }
+        let translator = MockSavingsTranslator()
+        let pendingID = try await queueTranslation(localizedAI)
+        check(localizedAI.suggestion == nil && localizedAI.isTranslating, "English output stays hidden until all translation completes")
+        await localizedAI.translatePending(using: translator, requestID: pendingID)
+        check(localizedAI.suggestion == translator.result && !localizedAI.isGenerating && translator.prepareCalls == 1, "Summary and every action are translated before publication")
+        localizedAI.refresh(for: facts)
+        check(localizedAI.suggestion == translator.result && !localizedAI.isGenerating, "Translated result is cached and reused")
+        translator.prepareFailure = TranslationError.notInstalled
+        var translationID = try await queueTranslation(localizedAI)
+        await localizedAI.translatePending(using: translator, requestID: translationID)
+        check(localizedAI.suggestion == nil && localizedAI.notice?.contains("Paket bahasa") == true, "Missing language packs keep Indonesian fallback and produce a toast")
+        translator.prepareFailure = SavingsTranslationFailure.unsupported
+        translationID = try await queueTranslation(localizedAI)
+        await localizedAI.translatePending(using: translator, requestID: translationID)
+        check(localizedAI.errorNotice == nil && localizedAI.suggestion == nil && !localizedAI.isGenerating, "Unsupported translation silently retains Indonesian fallback")
+        translator.prepareFailure = URLError(.notConnectedToInternet)
+        translationID = try await queueTranslation(localizedAI)
+        await localizedAI.translatePending(using: translator, requestID: translationID)
+        check(localizedAI.notice?.contains("Koneksi terputus") == true && localizedAI.suggestion == nil, "Offline language preparation never exposes English")
+        translator.prepareFailure = TranslationError.alreadyCancelled
+        translationID = try await queueTranslation(localizedAI)
+        await localizedAI.translatePending(using: translator, requestID: translationID)
+        check(!localizedAI.isGenerating && localizedAI.notice?.contains("terhenti") == true, "Cancelled language preparation ends loading and keeps fallback")
+        translator.prepareFailure = nil
+        translator.result = english.response
+        translationID = try await queueTranslation(localizedAI)
+        await localizedAI.translatePending(using: translator, requestID: translationID)
+        check(localizedAI.suggestion == nil && localizedAI.notice != nil, "Unchanged English response is rejected")
+        translator.result = SavingsSuggestion(summary: "Ringkasan diterjemahkan.", actions: [english.response.actions[0], "Rencanakan belanja."])
+        translationID = try await queueTranslation(localizedAI)
+        await localizedAI.translatePending(using: translator, requestID: translationID)
+        check(localizedAI.suggestion == nil, "Partially translated actions cannot leak English")
+        translator.result = SavingsSuggestion(summary: "Belanja paling besar.", actions: ["Periksa kebutuhan.", "Rencanakan belanja."])
+        translator.failure = NSError(domain: "Synthetic translation failure", code: 1)
+        translationID = try await queueTranslation(localizedAI)
+        await localizedAI.translatePending(using: translator, requestID: translationID)
+        check(localizedAI.suggestion == nil && localizedAI.notice?.contains("diterjemahkan") == true, "Unexpected translation error has a readable fallback toast")
+        translator.failure = nil
+        translator.delay = 40_000_000
+        translationID = try await queueTranslation(localizedAI)
+        let lateID = translationID
+        let translating = Task { await localizedAI.translatePending(using: translator, requestID: lateID) }
+        await Task.yield()
+        localizedAI.pause()
+        await translating.value
+        check(localizedAI.suggestion == nil && localizedAI.errorNotice == nil && !localizedAI.isGenerating, "Background cancellation ignores late translation without an error")
+        let quickTimeout = SavingsAIService(provider: english, timeoutNanoseconds: 10_000_000, debounceNanoseconds: 0)
+        let timeoutID = try await queueTranslation(quickTimeout)
+        await quickTimeout.translatePending(using: translator, requestID: timeoutID)
+        check(quickTimeout.suggestion == nil && quickTimeout.notice?.contains("terlalu lama") == true && translator.wasCancelled, "Translation timeout cancels work and ignores late output")
         print("\(count) regression checks passed")
     }
 }
