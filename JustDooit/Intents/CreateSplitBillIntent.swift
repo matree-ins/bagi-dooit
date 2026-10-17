@@ -8,24 +8,23 @@ struct CreateSplitBillIntent: AppIntent {
         categoryName: "Split Bill",
         searchKeywords: ["split bill", "bagi tagihan", "patungan", "tagihan", "bill"]
     )
-    static let supportedModes: IntentModes = [.background, .foreground(.dynamic)]
+    static let supportedModes: IntentModes = .background
     static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
-    static let isDiscoverable = true
-    static let openAppWhenRun = false
 
-    @Parameter(title: "Nama tagihan", requestValueDialog: "Apa nama tagihannya?")
+    // Siri transcribes answers in its own language (English), so prompts show the English grammar the parser accepts.
+    @Parameter(title: "Nama tagihan", requestValueDialog: "What is the bill name? For example, lunch.")
     var billTitle: String
 
-    @Parameter(title: "Item, jumlah, harga satuan", requestValueDialog: "Sebutkan item, jumlah, harga satuan. Contoh nasi goreng jumlah dua harga satuan dua puluh lima ribu, lalu es teh jumlah tiga harga satuan lima ribu.")
+    @Parameter(title: "Item, jumlah, harga satuan", requestValueDialog: "Say each item with quantity and unit price. For example: fried rice quantity two unit price twenty five thousand, then iced tea quantity three unit price five thousand.")
     var itemDetails: String
 
-    @Parameter(title: "Pajak, ongkir, tambahan, atau diskon", requestValueDialog: "Ada tambahan atau diskon? Contoh pajak sepuluh persen lalu ongkir dua belas ribu. Biaya dibagi proporsional pesanan. Katakan tidak ada jika tanpa tambahan.")
+    @Parameter(title: "Pajak, ongkir, tambahan, atau diskon", requestValueDialog: "Any tax, delivery, extra fee, or discount? For example: tax ten percent, then delivery twelve thousand. Say none if there are no extras.")
     var extraDetails: String
 
-    @Parameter(title: "Nama teman", requestValueDialog: "Siapa saja teman yang ikut? Kamu otomatis ikut sebagai Saya. Pisahkan nama dengan koma atau kata dan.")
+    @Parameter(title: "Nama teman", requestValueDialog: "Who joined? You are included automatically. For example: Budi and Siti.")
     var participantNames: String
 
-    @Parameter(title: "Pembagian item", requestValueDialog: "Sebutkan setiap item untuk siapa. Contoh nasi goreng untuk Budi satu dan Siti satu, lalu es teh untuk Saya satu dan Budi satu dan Siti satu. Untuk berbagi satu item, sebutkan nama tanpa jumlah.")
+    @Parameter(title: "Pembagian item", requestValueDialog: "Say who each item is for. For example: fried rice for Budi one and Siti one, then iced tea for me one and Budi one and Siti one. To share one item, say the names without a number.")
     var itemAssignments: String
 
     static var parameterSummary: some ParameterSummary {

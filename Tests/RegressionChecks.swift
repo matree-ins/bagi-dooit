@@ -31,7 +31,7 @@ struct RegressionChecks {
         guard let defaults = UserDefaults(suiteName: suite) else { fatalError("Cannot isolate storage") }
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = ExpenseStore(defaults: defaults)
-        check(!store.expenses.isEmpty, "Fresh install retains existing demo behavior")
+        check(store.expenses.isEmpty && store.splitSessions.isEmpty, "Fresh install starts without dummy data")
         store.expenses.removeAll()
         check(ExpenseStore(defaults: defaults).expenses.isEmpty, "Deleted history stays empty after reload")
         let expense = Expense(title: "Regression", amount: 35_000, category: .food, date: now)

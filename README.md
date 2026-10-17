@@ -26,55 +26,57 @@ Aplikasi iOS untuk mencatat pengeluaran dan membagi tagihan (split bill). Fokus 
 
 Shortcut utama untuk mencatat split bill tanpa membuka form manual.
 
+### Penting: Siri harus bahasa Inggris
+
+Siri belum mendukung Bahasa Indonesia. Siri hanya mencocokkan frasa dalam bahasa Siri di perangkat, dan juga mentranskrip jawabanmu dalam bahasa itu. Jadi:
+
+- **Settings → Siri → Language → English** (US/UK/Australia, bebas).
+- Ucapkan frasa pemicu **dan** jawaban dalam format English di bawah.
+- Kalau Siri menjawab sendiri tanpa menanyakan item/teman, berarti intent app **tidak** terpicu (biasanya karena bahasa Siri atau frasa salah).
+
+Install/run app sekali dari Xcode di iPhone supaya shortcut terdaftar.
+
 ### Cara memicu
 
-**Wajib:** install/run app sekali di device supaya Siri mendaftarkan shortcut. Kalau Siri “ngarang” jawaban tanpa menanyakan item/teman, berarti intent app **belum** terpicu.
+Sebut nama app **Bagi Dooit** (ucapkan “bagi du-it”). Alias yang juga dikenali: `BagiDooit`, `Bagi Doit`.
 
-Ucapkan **persis** salah satu (sebut nama app):
+- “Hey Siri, **create a split bill in Bagi Dooit**”
+- “Hey Siri, **split a bill with Bagi Dooit**”
+- “Hey Siri, **new split bill in Bagi Dooit**”
 
-- “Hey Siri, **buat split bill di Bagi Dooit**”
-- “Hey Siri, **catat split bill ke Bagi Dooit**”
-- “Hey Siri, **bagi tagihan di Bagi Dooit**”
-- “Hey Siri, **Bagi Dooit buat split bill**”
-- English: “Create a split bill in Bagi Dooit”
-
-Nama lain yang dikenali: **JustDooit**, **BagiDooit**, **Bagi Doit**.
-
-**Kalau masih halu:**
-1. Buka app Bagi Dooit sekali (shortcut di-donate ulang saat launch).
-2. Buka app **Shortcuts** → cari **Buat Split Bill** / Bagi Dooit → jalankan manual, atau Add to Siri.
-3. Settings → Siri → pastikan bahasa cocok; coba frasa English di atas.
-4. Jangan bilang hanya “catat split bill” tanpa nama app — Siri akan jawab generatif, bukan masuk ke Bagi Dooit.
+Alternatif tanpa suara: buka app **Shortcuts** → cari **Buat Split Bill** → jalankan dan ketik jawabannya (format Indonesia maupun English sama-sama diterima kalau diketik).
 
 ### Alur yang diminta Siri
 
 Siri menanyakan lima hal secara berurutan:
 
-1. **Nama tagihan** — contoh: `Makan Siang`
+1. **Nama tagihan** — contoh: `lunch`
 2. **Item, jumlah, harga satuan** — setiap item wajib punya jumlah dan harga satuan
-3. **Pajak, ongkir, tambahan, atau diskon** — atau bilang `tidak ada`
+3. **Pajak, ongkir, tambahan, atau diskon** — atau bilang `none`
 4. **Nama teman** — kamu otomatis masuk sebagai **Saya**
 5. **Pembagian item** — sebut tiap item untuk siapa (dan berapa porsi, jika perlu)
 
 Setelah itu Siri membacakan ringkasan (item, tambahan, bagian per orang) dan minta konfirmasi. Baru setelah kamu setuju, tagihan disimpan ke store yang sama dengan UI Beranda.
 
-### Contoh percakapan lengkap
+### Contoh percakapan lengkap (Siri English)
 
-> **Kamu:** Hey Siri, buat split bill di Bagi Dooit  
-> **Siri:** Apa nama tagihannya?  
-> **Kamu:** Makan Siang  
-> **Siri:** Sebutkan item, jumlah, harga satuan…  
-> **Kamu:** nasi goreng jumlah dua harga satuan dua puluh lima ribu lalu es teh jumlah tiga harga satuan lima ribu  
-> **Siri:** Ada tambahan atau diskon?  
-> **Kamu:** pajak sepuluh persen lalu ongkir dua belas ribu lalu biaya admin tiga ribu lalu diskon lima ribu  
-> **Siri:** Siapa saja teman yang ikut?  
-> **Kamu:** Budi dan Siti  
-> **Siri:** Sebutkan setiap item untuk siapa…  
-> **Kamu:** nasi goreng untuk Budi satu dan Siti satu lalu es teh untuk Saya satu dan Budi satu dan Siti satu  
-> **Siri:** *(ringkasan + total + bagian masing-masing)* Simpan?  
-> **Kamu:** Ya  
+> **Kamu:** Hey Siri, create a split bill in Bagi Dooit  
+> **Siri:** What is the bill name?  
+> **Kamu:** Lunch  
+> **Siri:** Say each item with quantity and unit price…  
+> **Kamu:** fried rice quantity two unit price twenty five thousand, then iced tea quantity three unit price five thousand  
+> **Siri:** Any tax, delivery, extra fee, or discount?  
+> **Kamu:** tax ten percent, then delivery twelve thousand  
+> **Siri:** Who joined?  
+> **Kamu:** Budi and Siti  
+> **Siri:** Say who each item is for…  
+> **Kamu:** fried rice for Budi one and Siti one, then iced tea for me one and Budi one and Siti one  
+> **Siri:** *(ringkasan + total + bagian masing-masing)*  
+> **Kamu:** Yes  
 
 Tagihan langsung muncul di daftar split bill aplikasi.
+
+Kata kunci English yang dikenali parser: `quantity`, `unit price`, `then`, `for`, `and`, `me`, `percent`, `discount`, `none`.
 
 ### Format item
 
