@@ -46,12 +46,22 @@ jobs:
       - name: Setup App Store Connect API Key
         env:
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         run: |
-          if [ -n "$APP_STORE_CONNECT_API_KEY_BASE64" ] && [ -n "$APP_STORE_CONNECT_API_KEY_ID" ]; then
+          KEY_ID="${APP_STORE_CONNECT_API_KEY_ID:-$APP_STORE_CONNECT_API_KEY}"
+          ISSUER_ID="${APP_STORE_CONNECT_ISSUER_ID:-$APP_STORE_CONNECT_API_ISSUER_ID}"
+
+          if [ -n "$KEY_ID" ] && [ -n "$APP_STORE_CONNECT_API_KEY_BASE64" ]; then
             mkdir -p ~/.appstoreconnect/private_keys
-            echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
-            echo "App Store Connect API Key configured."
+            echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+            echo "ASC_KEY_ID=$KEY_ID" >> $GITHUB_ENV
+            echo "ASC_ISSUER_ID=$ISSUER_ID" >> $GITHUB_ENV
+            echo "App Store Connect API Key configured successfully for Key ID: $KEY_ID"
+          else
+            echo "App Store Connect API Key secrets not fully provided."
           fi
 
       - name: Install Apple Certificate and Provisioning Profile (if provided)
@@ -109,11 +119,8 @@ jobs:
           EOF
 
       - name: Build Archive
-        env:
-          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         run: |
-          if [ -n "$APP_STORE_CONNECT_API_KEY_ID" ] && [ -f ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 ]; then
+          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -f ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 ]; then
             echo "Archiving with App Store Connect API Key & automatic provisioning..."
             xcodebuild -project JustDooit.xcodeproj \
               -scheme JustDooit \
@@ -121,12 +128,12 @@ jobs:
               -destination 'generic/platform=iOS' \
               -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
               -allowProvisioningUpdates \
-              -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 \
-              -authenticationKeyID "$APP_STORE_CONNECT_API_KEY_ID" \
-              -authenticationKeyIssuerID "$APP_STORE_CONNECT_API_ISSUER_ID" \
+              -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+              -authenticationKeyID "$ASC_KEY_ID" \
+              -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
               archive
           else
-            echo "Archiving with local Ad-Hoc signature (full signing occurs during exportArchive)..."
+            echo "Archiving with local Ad-Hoc signature..."
             xcodebuild -project JustDooit.xcodeproj \
               -scheme JustDooit \
               -configuration Release \
@@ -139,20 +146,19 @@ jobs:
           fi
 
       - name: Export & Upload to TestFlight
-        env:
-          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         run: |
-          if [ -n "$APP_STORE_CONNECT_API_KEY_ID" ] && [ -f ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 ]; then
+          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -f ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 ]; then
+            echo "Exporting and uploading to TestFlight via App Store Connect API Key..."
             xcodebuild -exportArchive \
               -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
               -exportOptionsPlist ExportOptions.plist \
               -exportPath $RUNNER_TEMP/build \
               -allowProvisioningUpdates \
-              -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 \
-              -authenticationKeyID "$APP_STORE_CONNECT_API_KEY_ID" \
-              -authenticationKeyIssuerID "$APP_STORE_CONNECT_API_ISSUER_ID"
+              -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+              -authenticationKeyID "$ASC_KEY_ID" \
+              -authenticationKeyIssuerID "$ASC_ISSUER_ID"
           else
+            echo "Exporting with default settings..."
             xcodebuild -exportArchive \
               -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
               -exportOptionsPlist ExportOptions.plist \
