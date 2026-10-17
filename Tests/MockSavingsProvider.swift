@@ -10,9 +10,11 @@ final class MockSavingsProvider: SavingsSuggestionProviding {
     var shouldFail = false
     var delay: UInt64 = 0
     var calls = 0
+    var receivedBudgets: [Double] = []
 
     func generate(for advice: FinancialBehaviorAdvice) async throws -> SavingsSuggestion {
         calls += 1
+        receivedBudgets.append(advice.safeDailyLimit)
         let captured = response
         if delay > 0 { try? await Task.sleep(nanoseconds: delay) }
         if let failure { throw failure }

@@ -7,10 +7,10 @@ import SwiftUI
 
 enum FinancialStatus: String {
     case insufficientData = "Belum cukup data"
-    case hemat = "Hemat & Sehat"
-    case normal = "Terkontrol"
-    case warning = "Perlu Waspada"
-    case alert = "Overbudget! Wajib Hemat"
+    case hemat = "Di bawah anggaran"
+    case normal = "Dalam anggaran"
+    case warning = "Melebihi anggaran"
+    case alert = "Jauh melebihi anggaran"
 
     var badgeColor: Color {
         switch self {
@@ -63,6 +63,7 @@ enum FinancialAdvisor {
             return fallbackAdvice(dailyBudget: dailyBudgetLimit)
         }
         let threeDayTotal = threeDayExpenses.reduce(0) { $0 + $1.amount }
+        guard threeDayTotal.isFinite else { return fallbackAdvice(dailyBudget: dailyBudgetLimit) }
         let threeDayAverage = threeDayTotal / 3.0
 
         // Find highest spending category in last 3 days
@@ -75,78 +76,59 @@ enum FinancialAdvisor {
         let topCategoryAmount = topCategoryEntry?.value ?? 0
 
         // Determine status based on ratio of 3-day average to safe daily budget
-        let ratio = threeDayAverage / max(1, dailyBudgetLimit)
+        let ratio = threeDayAverage / dailyBudgetLimit
 
         let status: FinancialStatus
         let headline: String
-        let detailedAdvice: String
-        var actionPlan: [String] = []
-
         if ratio > 1.4 {
             status = .alert
-            headline = "Pengeluaran Meledak! Wajib Hemat 3 Hari ke Depan"
-            if let topCat = topCategory {
-                detailedAdvice = "Pengeluaran 3 hari terakhir mencapai \(CurrencyFormatter.format(threeDayTotal)) (rata-rata \(CurrencyFormatter.format(threeDayAverage))/hari), melampaui batas aman \(CurrencyFormatter.format(dailyBudgetLimit))/hari. Porsi terbesar dihabiskan untuk '\(topCat.rawValue)' (\(CurrencyFormatter.format(topCategoryAmount)))."
-                actionPlan = [
-                    "Freeze belanja non-esensial & jajan sampai akhir pekan.",
-                    "Masak sendiri atau bawa bekal untuk menekan pos \(topCat.rawValue).",
-                    "Target pengeluaran harian besok maksimal \(CurrencyFormatter.format(dailyBudgetLimit * 0.5))."
-                ]
-            } else {
-                detailedAdvice = "Pengeluaran 3 hari terakhir mencapai \(CurrencyFormatter.format(threeDayTotal)), melebihi batas aman target kamu."
-                actionPlan = ["Stop pengeluaran sekunder selama 3 hari.", "Catat setiap transaksi sekecil apa pun."]
-            }
-        } else if ratio > 1.0 {
+            headline = "Rata-rata pengeluaran jauh melebihi anggaran"
+        } else if ratio > 1 {
             status = .warning
-            headline = "Tren Pengeluaran Mulai Tinggi, Ayo Lebih Hemat!"
-            detailedAdvice = "Rata-rata 3 hari terakhir adalah \(CurrencyFormatter.format(threeDayAverage))/hari, sedikit di atas target kamu (\(CurrencyFormatter.format(dailyBudgetLimit))/hari). Perlu rem sedikit agar tidak overbudget di akhir periode."
-            actionPlan = [
-                "Pilih alternatif transportasi atau makan yang lebih terjangkau.",
-                "Tunda pembelian barang keinginan (wants) minimal 48 jam.",
-                "Sisa budget aman harian: \(CurrencyFormatter.format(dailyBudgetLimit))."
-            ]
+            headline = "Rata-rata pengeluaran melebihi anggaran"
         } else if ratio > 0.6 {
             status = .normal
-            headline = "Keuangan Terkontrol Cukup Sehat"
-            detailedAdvice = "Rata-rata pengeluaran 3 hari kamu \(CurrencyFormatter.format(threeDayAverage))/hari. Angka ini masih aman di dalam batas target harianmu."
-            actionPlan = [
-                "Pertahankan kebiasaan bijak berbelanja.",
-                "Alokasikan sisa budget harian ke tabungan darurat.",
-                "Tetap pantau transaksi rutin harian."
-            ]
+            headline = "Rata-rata pengeluaran masih dalam anggaran"
         } else {
             status = .hemat
-            headline = "Hebat! Kamu Sangat Hemat & Disiplin 🎉"
-            detailedAdvice = "Pengeluaran 3 hari terakhir hanya \(CurrencyFormatter.format(threeDayTotal)) (rata-rata \(CurrencyFormatter.format(threeDayAverage))/hari). Gaya hidup hemat ini sangat bagus untuk kesehatan finansialmu!"
-            actionPlan = [
-                "Sisa anggaran berpotensi dialokasikan untuk investasi.",
-                "Reward diri dengan hal positif tanpa merusak cash flow.",
-                "Pertahankan gaya hidup mindful spending ini!"
-            ]
+            headline = "Rata-rata pengeluaran di bawah anggaran"
         }
+        let comparison: String
+        if threeDayAverage > dailyBudgetLimit {
+            comparison = "Melebihi anggaran harian sebesar \(CurrencyFormatter.format(threeDayAverage - dailyBudgetLimit))."
+        } else {
+            comparison = "Selisih terhadap anggaran harian sebesar \(CurrencyFormatter.format(dailyBudgetLimit - threeDayAverage))."
+        }
+        var detailedAdvice = "Rata-rata pengeluaran tercatat selama 3 hari adalah \(CurrencyFormatter.format(threeDayAverage))/hari, atau \(ratio.formatted(.percent.precision(.fractionLength(0)))) dari anggaran harian \(CurrencyFormatter.format(dailyBudgetLimit)). \(comparison)"
+        if let topCategory {
+            detailedAdvice += " Kategori terbesar adalah \(topCategory.rawValue), sebesar \(CurrencyFormatter.format(topCategoryAmount))."
+        }
+        detailedAdvice += " Rata-rata dihitung dari total dibagi tiga; hari tanpa catatan dihitung nol."
 
-        return FinancialBehaviorAdvice(
+        var advice = FinancialBehaviorAdvice(
             status: status,
             headline: headline,
             detailedAdvice: detailedAdvice,
-            actionPlan: actionPlan,
+            actionPlan: [],
             threeDayTotal: threeDayTotal,
             threeDayDailyAverage: threeDayAverage,
             safeDailyLimit: dailyBudgetLimit,
             topCategory: topCategory,
             topCategoryAmount: topCategoryAmount
         )
+        advice.actionPlan = SavingsFallback.actions(for: advice)
+        return advice
     }
 
     private static func fallbackAdvice(dailyBudget: Double) -> FinancialBehaviorAdvice {
         FinancialBehaviorAdvice(
             status: .insufficientData,
-            headline: "Mulai Catat Pengeluaranmu",
-            detailedAdvice: "Belum ada cukup transaksi dalam 3 hari terakhir. Mulai catat transaksi untuk mendapatkan saran finansial cerdas!",
+            headline: "Belum ada ringkasan pengeluaran",
+            detailedAdvice: "Catat pengeluaran dalam 3 hari terakhir dan tetapkan anggaran harian yang valid untuk melihat perbandingan.",
             actionPlan: ["Input transaksi lewat manual, suara, atau scan struk."],
             threeDayTotal: 0,
             threeDayDailyAverage: 0,
-            safeDailyLimit: dailyBudget,
+            safeDailyLimit: dailyBudget.isFinite && dailyBudget > 0 ? dailyBudget : 0,
             topCategory: nil,
             topCategoryAmount: 0
         )

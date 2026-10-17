@@ -52,6 +52,19 @@ struct FoundationSavingsProvider: SavingsSuggestionProviding {
         case .warning: status = "recorded average above daily budget"
         case .alert: status = "recorded average substantially above daily budget"
         }
+        let budgetGuidance: String
+        switch advice.status {
+        case .alert:
+            budgetGuidance = "Recorded spending substantially exceeds the budget. Prioritize essentials and suggest deferring nonessential purchases."
+        case .warning:
+            budgetGuidance = "Recorded spending is above the budget. Suggest a small practical adjustment in the largest category without cutting essential needs."
+        case .normal:
+            budgetGuidance = "Recorded spending fits the budget. Suggest maintaining the current limit and checking before adding discretionary purchases. Do not imply overspending."
+        case .hemat:
+            budgetGuidance = "Recorded spending is well below the budget. Suggest maintaining habits and keeping the unused allowance, not spending it or making drastic cuts."
+        case .insufficientData:
+            budgetGuidance = "Ask the user to complete records before judging the budget."
+        }
         let category: String
         switch advice.topCategory {
         case .food: category = "food and drinks"
@@ -69,6 +82,9 @@ struct FoundationSavingsProvider: SavingsSuggestionProviding {
             Recorded total: \(advice.threeDayTotal).
             Calendar daily average: \(advice.threeDayDailyAverage).
             Daily budget: \(advice.safeDailyLimit).
+            Unused daily allowance based on the recorded calendar average: \(max(0, advice.safeDailyLimit - advice.threeDayDailyAverage)).
+            Budget-specific guidance: \(budgetGuidance)
+            Tailor the actions to this budget situation as well as the largest category. Do not use the same restrictive advice for an under-budget situation as for an over-budget situation.
             Largest recorded category: \(category), amount: \(advice.topCategoryAmount).
             Describe the spending pattern and suggest practical habits without repeating any figures.
             """, generating: GeneratedSavingsSuggestion.self,

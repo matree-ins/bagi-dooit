@@ -6,7 +6,7 @@ struct FinancialStatusBadge: View {
     var body: some View {
         Label(status.rawValue, systemImage: status.icon)
             .font(.footnote.weight(.medium))
-            .fixedSize(horizontal: true, vertical: false)
+            .fixedSize(horizontal: false, vertical: true)
             .foregroundStyle(status.badgeColor)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)

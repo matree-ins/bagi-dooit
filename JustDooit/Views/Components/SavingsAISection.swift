@@ -16,7 +16,9 @@ struct SavingsAISection: View {
                     .font(.caption).foregroundStyle(BagiTheme.muted)
                 Text(suggestion.summary).font(.subheadline)
                 actions(suggestion.actions)
-            } else {
+            } else if !service.isGenerating {
+                Text("Saran bawaan")
+                    .font(.caption).foregroundStyle(BagiTheme.muted)
                 actions(SavingsFallback.actions(for: advice))
             }
         }

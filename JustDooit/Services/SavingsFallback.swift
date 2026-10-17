@@ -16,9 +16,19 @@ enum SavingsFallback {
         case .entertainment: categoryTip = "Pilih kegiatan hiburan yang sesuai anggaran."
         case .other, nil: categoryTip = "Rapikan kategori pengeluaran agar pola belanja lebih jelas."
         }
-        let budgetTip = advice.status == .alert || advice.status == .warning
-            ? "Tunda pembelian yang belum diperlukan dan tinjau anggaran harian."
-            : "Pertahankan pencatatan agar pengeluaran tetap terpantau."
+        let budgetTip: String
+        switch advice.status {
+        case .alert:
+            budgetTip = "Pengeluaran tercatat jauh di atas anggaran. Prioritaskan kebutuhan penting dan tunda belanja tambahan."
+        case .warning:
+            budgetTip = "Pengeluaran tercatat melewati anggaran. Tinjau pos yang bisa disesuaikan tanpa mengurangi kebutuhan penting."
+        case .normal:
+            budgetTip = "Pengeluaran tercatat masih dalam anggaran. Pertahankan batas belanja sebelum menambah pengeluaran."
+        case .hemat:
+            budgetTip = "Pengeluaran tercatat masih jauh di bawah anggaran. Pertahankan kebiasaan ini tanpa merasa harus menghabiskan sisanya."
+        case .insufficientData:
+            budgetTip = "Lengkapi catatan sebelum menilai kecukupan anggaran."
+        }
         return [categoryTip, budgetTip]
     }
 }

@@ -238,6 +238,30 @@ struct RegressionChecks {
         let timeoutID = try await queueTranslation(quickTimeout)
         await quickTimeout.translatePending(using: translator, requestID: timeoutID)
         check(quickTimeout.suggestion == nil && quickTimeout.notice?.contains("terlalu lama") == true && translator.wasCancelled, "Translation timeout cancels work and ignores late output")
+
+        let sample = Expense(title: "Budget check", amount: 300_000, category: .shopping, date: now)
+        let budgets = [50_000.0, 90_000.0, 125_000.0, 200_000.0]
+        let budgetFacts = budgets.map { FinancialAdvisor.analyze(expenses: [sample], dailyBudgetLimit: $0, now: now) }
+        check(budgetFacts.map(\.status) == [.alert, .warning, .normal, .hemat], "The same expenses react to four daily budget levels")
+        let budgetActions = budgetFacts.map { SavingsFallback.actions(for: $0).last ?? "" }
+        check(Set(budgetActions).count == 4, "Fallback budget guidance differs across all four budget levels")
+        let budgetProvider = MockSavingsProvider()
+        let budgetService = SavingsAIService(provider: budgetProvider, debounceNanoseconds: 0)
+        for budgetFact in budgetFacts {
+            budgetService.refresh(for: budgetFact)
+            for _ in 0..<100 where budgetService.isGenerating { try await Task.sleep(nanoseconds: 1_000_000) }
+        }
+        check(budgetProvider.receivedBudgets == budgets, "Every budget change reaches the AI provider with its new value")
+
+        func statusAt(_ average: Double) -> FinancialStatus {
+            FinancialAdvisor.analyze(expenses: [Expense(title: "Boundary", amount: average * 3, category: .food, date: now)], dailyBudgetLimit: 100_000, now: now).status
+        }
+        check(statusAt(60_000) == .hemat && statusAt(60_001) == .normal, "Sixty percent boundary is classified correctly")
+        check(statusAt(100_000) == .normal && statusAt(100_001) == .warning, "Any amount above budget is labelled exceeding budget")
+        check(statusAt(140_000) == .warning && statusAt(140_001) == .alert, "Substantial overspending starts strictly above forty percent excess")
+        check(FinancialAdvisor.analyze(expenses: [sample], dailyBudgetLimit: 0, now: now).status == .insufficientData, "Invalid budget does not imply healthy finances")
+        check(FinancialAdvisor.analyze(expenses: [sample], dailyBudgetLimit: .nan, now: now).safeDailyLimit == 0, "Invalid budget never leaks NaN into presentation")
+        check(!FinancialStatus.hemat.rawValue.contains("Sehat") && FinancialStatus.warning.rawValue == "Melebihi anggaran", "Labels describe the budget comparison without financial health claims")
         print("\(count) regression checks passed")
     }
 }
