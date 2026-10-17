@@ -80,7 +80,9 @@ struct SplitItemsSection: View {
                                 Button(action: {
                                     session.items.removeAll { $0.id == item.id }
                                 }) {
-                                    Image(systemName: "trash")
+                                    Label("Hapus \(item.name)", systemImage: "trash")
+                                        .labelStyle(.iconOnly)
+                                        .frame(minWidth: 44, minHeight: 44)
                                         .font(.footnote)
                                         .foregroundStyle(.red.opacity(0.8))
                                 }
@@ -112,7 +114,7 @@ struct SplitItemsSection: View {
                                             .font(.footnote)
                                             .fontWeight(.semibold)
                                             .padding(.horizontal, 10)
-                                            .padding(.vertical, 6)
+                                            .padding(.vertical, 12)
                                             .background(item.assignedParticipantIds.count == session.participants.count ? BagiTheme.primary : BagiTheme.soft)
                                             .foregroundStyle(item.assignedParticipantIds.count == session.participants.count ? .white : .primary)
                                             .clipShape(Capsule())
@@ -135,7 +137,7 @@ struct SplitItemsSection: View {
                                                         .fontWeight(.medium)
                                                 }
                                                 .padding(.horizontal, 10)
-                                                .padding(.vertical, 6)
+                                                .padding(.vertical, 12)
                                                 .background(isAssigned ? Color.green.opacity(0.18) : BagiTheme.soft)
                                                 .foregroundStyle(isAssigned ? Color.green : Color.primary)
                                                 .overlay(

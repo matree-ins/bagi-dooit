@@ -21,6 +21,7 @@ struct SplitBillView: View {
         ]
     )
 
+    @State private var didAssignDemoItems = false
     @State private var showContactPicker: Bool = false
     @State private var showAddManualFriendSheet: Bool = false
     @State private var showAddItemSheet: Bool = false
@@ -91,6 +92,8 @@ struct SplitBillView: View {
     }
 
     private func autoAssignDefaultDemoItems() {
+        guard !didAssignDemoItems else { return }
+        didAssignDemoItems = true
         if session.participants.count >= 3 && !session.items.isEmpty {
             if session.items[0].assignedParticipantIds.isEmpty {
                 session.items[0].assignedParticipantIds.insert(session.participants[1].id)
@@ -130,6 +133,7 @@ struct SplitBillView: View {
     }
 
     private func sendWhatsApp(for participant: SplitParticipant) {
+        guard session.canShare else { return }
         if let url = session.createWhatsAppURL(for: participant) {
             UIApplication.shared.open(url) { success in
                 if !success {

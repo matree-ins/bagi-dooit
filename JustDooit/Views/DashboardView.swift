@@ -52,7 +52,7 @@ struct DashboardView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showAddSheet = true }) {
-                        Image(systemName: "plus.circle.fill")
+                        Label("Catat pengeluaran", systemImage: "plus.circle.fill").labelStyle(.iconOnly)
                             .font(.title3)
                             .foregroundStyle(BagiTheme.primary)
                     }
@@ -64,7 +64,7 @@ struct DashboardView: View {
                             Label("Reset Data Demo", systemImage: "arrow.counterclockwise")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Label("Opsi transaksi", systemImage: "ellipsis.circle").labelStyle(.iconOnly)
                             .font(.subheadline)
                     }
                 }

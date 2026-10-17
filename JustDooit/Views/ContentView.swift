@@ -9,29 +9,21 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var expenseStore = ExpenseStore()
-    @State private var selectedTab: Int = 0
+    @State private var selectedTab: AppTab = .home
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            DashboardView(expenseStore: expenseStore, onNavigateToSplitBill: {
-                selectedTab = 1
-            })
-            .tabItem {
-                Label("Beranda", systemImage: "house.fill")
+            Tab("Beranda", systemImage: "house.fill", value: AppTab.home) {
+                DashboardView(expenseStore: expenseStore, onNavigateToSplitBill: {
+                    selectedTab = .splitBill
+                })
             }
-            .tag(0)
-
-            SplitBillView()
-                .tabItem {
-                    Label("Bagi Tagihan", systemImage: "person.2.fill")
-                }
-                .tag(1)
-
-            AnalyticsView(expenseStore: expenseStore)
-                .tabItem {
-                    Label("Tips Hemat", systemImage: "chart.pie.fill")
-                }
-                .tag(2)
+            Tab("Bagi Tagihan", systemImage: "person.2.fill", value: AppTab.splitBill) {
+                SplitBillView()
+            }
+            Tab("Tips Hemat", systemImage: "chart.pie.fill", value: AppTab.analytics) {
+                AnalyticsView(expenseStore: expenseStore)
+            }
         }
         .tint(BagiTheme.primary)
     }

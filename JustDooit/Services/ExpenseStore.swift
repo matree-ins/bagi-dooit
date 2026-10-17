@@ -15,14 +15,16 @@ class ExpenseStore: ObservableObject {
 
     @Published var dailyBudgetLimit: Double = 150_000 {
         didSet {
-            UserDefaults.standard.set(dailyBudgetLimit, forKey: "DailyBudgetLimitKey")
+            defaults.set(dailyBudgetLimit, forKey: "DailyBudgetLimitKey")
         }
     }
 
     private let storageKey = "JustDooit_Expenses_v1"
+    private let defaults: UserDefaults
 
-    init() {
-        if let savedBudget = UserDefaults.standard.value(forKey: "DailyBudgetLimitKey") as? Double, savedBudget > 0 {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let savedBudget = defaults.value(forKey: "DailyBudgetLimitKey") as? Double, savedBudget > 0 {
             self.dailyBudgetLimit = savedBudget
         }
         loadFromStorage()
@@ -71,14 +73,13 @@ class ExpenseStore: ObservableObject {
 
     private func saveToStorage() {
         if let encoded = try? JSONEncoder().encode(expenses) {
-            UserDefaults.standard.set(encoded, forKey: storageKey)
+            defaults.set(encoded, forKey: storageKey)
         }
     }
 
     private func loadFromStorage() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
-           let decoded = try? JSONDecoder().decode([Expense].self, from: data),
-           !decoded.isEmpty {
+        if let data = defaults.data(forKey: storageKey),
+           let decoded = try? JSONDecoder().decode([Expense].self, from: data) {
             self.expenses = decoded
         } else {
             // Seed with rich realistic demo data for mini hackathon

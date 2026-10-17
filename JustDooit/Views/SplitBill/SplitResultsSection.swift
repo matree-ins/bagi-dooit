@@ -21,6 +21,13 @@ struct SplitResultsSection: View {
                 .font(.footnote)
                 .foregroundStyle(BagiTheme.muted)
 
+            if let issue = session.sharingIssue {
+                Label(issue, systemImage: "exclamationmark.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(BagiTheme.muted)
+                    .accessibilityIdentifier("split.validation")
+            }
+
             VStack(spacing: 12) {
                 ForEach(session.participants) { participant in
                     let shareTotal = session.participantTotal(for: participant.id)
@@ -118,7 +125,9 @@ struct SplitResultsSection: View {
                                 Button(action: {
                                     onPreview(participant)
                                 }) {
-                                    Image(systemName: "eye.fill")
+                                    Label("Pratinjau tagihan untuk \(participant.name)", systemImage: "eye.fill")
+                                        .labelStyle(.iconOnly)
+                                        .frame(minWidth: 44, minHeight: 44)
                                         .font(.footnote)
                                         .foregroundStyle(BagiTheme.primary)
                                         .padding(.horizontal, 12)
@@ -127,6 +136,7 @@ struct SplitResultsSection: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                 }
                             }
+                            .disabled(!session.canShare)
                         }
                     }
                     .padding(14)

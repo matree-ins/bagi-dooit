@@ -1,32 +1,4 @@
-//
-//  SplitBillModel.swift
-//  JustDooit
-//
-
 import Foundation
-
-struct SplitParticipant: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var name: String
-    var phoneNumber: String
-
-    var cleanedPhone: String {
-        var digits = phoneNumber.filter { "0123456789+".contains($0) }
-        if digits.hasPrefix("0") {
-            digits = "62" + digits.dropFirst()
-        } else if digits.hasPrefix("+") {
-            digits = String(digits.dropFirst())
-        }
-        return digits
-    }
-}
-
-struct SplitItem: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var name: String
-    var price: Double
-    var assignedParticipantIds: Set<UUID> = []
-}
 
 struct SplitBillSession: Identifiable, Codable {
     var id: UUID = UUID()
@@ -53,6 +25,26 @@ struct SplitBillSession: Identifiable, Codable {
     var total: Double {
         max(0, subtotal - discount + taxAmount + serviceAmount)
     }
+
+    var sharingIssue: String? {
+        guard !participants.isEmpty else { return "Tambahkan teman sebelum membagikan tagihan." }
+        guard !items.isEmpty else { return "Tambahkan pesanan sebelum membagikan tagihan." }
+        let participantIDs = Set(participants.map(\.id))
+        guard participantIDs.count == participants.count else { return "Periksa daftar peserta tagihan." }
+        guard items.allSatisfy({ !$0.assignedParticipantIds.isEmpty && $0.assignedParticipantIds.isSubset(of: participantIDs) }) else {
+            return "Pilih penerima untuk setiap pesanan sebelum membagikan tagihan."
+        }
+        guard items.allSatisfy({ $0.price.isFinite && $0.price >= 0 }),
+              subtotal.isFinite, subtotal > 0,
+              discount.isFinite, discount >= 0, discount <= subtotal,
+              taxPercentage.isFinite, taxPercentage >= 0,
+              servicePercentage.isFinite, servicePercentage >= 0, total.isFinite else {
+            return "Periksa nominal pesanan, diskon, pajak, dan layanan."
+        }
+        return nil
+    }
+
+    var canShare: Bool { sharingIssue == nil }
 
     // Calculates share for an individual participant
     func participantSubtotal(for participantId: UUID) -> Double {

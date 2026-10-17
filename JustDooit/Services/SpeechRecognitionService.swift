@@ -1,144 +1,140 @@
-//
-//  SpeechRecognitionService.swift
-//  JustDooit
-//
-
 import SwiftUI
 import Combine
 import Speech
 import AVFoundation
 
-class SpeechRecognitionService: NSObject, ObservableObject {
-    @Published var isRecording: Bool = false
-    @Published var transcribedText: String = ""
-    @Published var detectedTitle: String = ""
-    @Published var detectedAmount: Double = 0
-    @Published var detectedCategory: ExpenseCategory = .food
+@MainActor
+final class SpeechRecognitionService: NSObject, ObservableObject {
+    @Published private(set) var isRecording = false
+    @Published private(set) var isRequestingPermission = false
+    @Published private(set) var transcribedText = ""
+    @Published private(set) var detectedTitle = ""
+    @Published private(set) var detectedAmount: Double = 0
+    @Published private(set) var detectedCategory: ExpenseCategory = .food
     @Published var errorMessage: String?
 
-    private var speechRecognizer: SFSpeechRecognizer?
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "id-ID"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
+    private var tapInstalled = false
+    private var attempt = UUID()
 
-    override init() {
-        super.init()
-        // Try Indonesian locale first, fallback to current or US
-        if let idRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "id-ID")), idRecognizer.isAvailable {
-            self.speechRecognizer = idRecognizer
-        } else {
-            self.speechRecognizer = SFSpeechRecognizer(locale: Locale.current) ?? SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    func requestAndStartRecording() async {
+        guard !isRecording, !isRequestingPermission else { return }
+        cancelRecording()
+        let currentAttempt = attempt
+        isRequestingPermission = true
+        errorMessage = nil
+        defer {
+            if attempt == currentAttempt { isRequestingPermission = false }
         }
+
+        let authorization = await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
+        }
+        guard attempt == currentAttempt, !Task.isCancelled else { return }
+        guard authorization == .authorized else {
+            errorMessage = "Izinkan pengenalan suara di Pengaturan untuk menggunakan mikrofon."
+            return
+        }
+        let microphoneAllowed = await AVAudioApplication.requestRecordPermission()
+        guard attempt == currentAttempt, !Task.isCancelled else { return }
+        guard microphoneAllowed else {
+            errorMessage = "Akses mikrofon ditolak. Izinkan akses di Pengaturan atau gunakan input manual."
+            return
+        }
+        beginRecording(attempt: currentAttempt)
     }
 
-    func requestAuthorization(completion: @escaping (Bool) -> Void) {
-        SFSpeechRecognizer.requestAuthorization { authStatus in
-            DispatchQueue.main.async {
-                switch authStatus {
-                case .authorized:
-                    AVAudioApplication.requestRecordPermission { granted in
-                        DispatchQueue.main.async {
-                            completion(granted)
-                        }
-                    }
-                default:
-                    completion(false)
-                }
-            }
+    private func beginRecording(attempt currentAttempt: UUID) {
+        guard let speechRecognizer, speechRecognizer.isAvailable else {
+            errorMessage = "Pengenalan suara bahasa Indonesia belum tersedia. Coba lagi atau gunakan input manual."
+            return
         }
-    }
-
-    func startRecording() {
-        guard !isRecording else { return }
-
-        // Cancel previous task if any
-        recognitionTask?.cancel()
-        recognitionTask = nil
-
         let audioSession = AVAudioSession.sharedInstance()
         do {
             try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            self.errorMessage = "Gagal mengaktifkan audio session: \(error.localizedDescription)"
-            return
-        }
-
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let recognitionRequest = recognitionRequest else {
-            self.errorMessage = "Tidak dapat membuat speech request."
-            return
-        }
-
-        recognitionRequest.shouldReportPartialResults = true
-
-        let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-
-        guard recordingFormat.sampleRate > 0, recordingFormat.channelCount > 0 else {
-            errorMessage = "Mikrofon belum tersedia. Coba lagi."
-            self.recognitionRequest = nil
-            try? audioSession.setActive(false)
-            return
-        }
-
-        do {
-            // iOS 27 supplies immutable buffers; Speech still takes a mutable PCM buffer.
-            // The new tap API supports buffers of at least 100 milliseconds.
-            let bufferSize = AVAudioFrameCount(recordingFormat.sampleRate * 0.1)
-            try inputNode.installAudioTap(onBus: 0, bufferSize: bufferSize, format: recordingFormat) { buffer, _ in
-                recognitionRequest.append(AVAudioPCMBuffer(copying: buffer))
+            let input = audioEngine.inputNode
+            let format = input.outputFormat(forBus: 0)
+            guard format.sampleRate > 0, format.channelCount > 0 else {
+                errorMessage = "Mikrofon belum tersedia. Coba lagi."
+                releaseAudio()
+                return
             }
-        } catch {
-            errorMessage = "Gagal menyiapkan mikrofon: \(error.localizedDescription)"
-            self.recognitionRequest = nil
-            try? audioSession.setActive(false)
-            return
-        }
-
-        audioEngine.prepare()
-        do {
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.shouldReportPartialResults = true
+            recognitionRequest = request
+            let bufferSize = AVAudioFrameCount(format.sampleRate * 0.1)
+            try input.installAudioTap(onBus: 0, bufferSize: bufferSize, format: format) { buffer, _ in
+                request.append(AVAudioPCMBuffer(copying: buffer))
+            }
+            tapInstalled = true
+            audioEngine.prepare()
             try audioEngine.start()
-            isRecording = true
             transcribedText = ""
-            errorMessage = nil
+            detectedTitle = ""
+            detectedAmount = 0
+            isRecording = true
+
+            recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
+                let transcript = result?.bestTranscription.formattedString
+                let isFinal = result?.isFinal ?? false
+                let failure = error?.localizedDescription
+                Task { @MainActor [weak self] in
+                    guard let self, self.attempt == currentAttempt else { return }
+                    if let transcript {
+                        self.parseSpokenText(transcript)
+                        self.transcribedText = transcript
+                    }
+                    if isFinal || failure != nil {
+                        self.releaseAudio()
+                        self.recognitionTask = nil
+                        if let failure, !isFinal {
+                            self.errorMessage = "Pengenalan suara berhenti: \(failure)"
+                        }
+                    }
+                }
+            }
         } catch {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            self.recognitionRequest = nil
-            try? audioSession.setActive(false)
-            self.errorMessage = "Gagal memulai audio engine: \(error.localizedDescription)"
-            return
-        }
-
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] (result, error) in
-            guard let self = self else { return }
-
-            if let result = result {
-                self.transcribedText = result.bestTranscription.formattedString
-                self.parseSpokenText(self.transcribedText)
-            }
-
-            if error != nil || (result?.isFinal ?? false) {
-                self.stopRecording()
-            }
+            releaseAudio()
+            errorMessage = "Gagal memulai mikrofon: \(error.localizedDescription)"
         }
     }
 
+    /// Stop capturing, but accept the final recognition result for this attempt.
     func stopRecording() {
-        guard isRecording else { return }
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
-        recognitionRequest?.endAudio()
+        releaseAudio()
         recognitionTask?.finish()
+    }
 
+    /// Invalidate pending permissions and callbacks when the input view disappears.
+    func cancelRecording() {
+        attempt = UUID()
+        isRequestingPermission = false
+        releaseAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+    }
+
+    private func releaseAudio() {
+        if audioEngine.isRunning { audioEngine.stop() }
+        if tapInstalled {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
         isRecording = false
         try? AVAudioSession.sharedInstance().setActive(false)
     }
 
-    // Direct parser for testing or simulation
     func simulateVoiceInput(_ text: String) {
-        self.transcribedText = text
+        cancelRecording()
+        errorMessage = nil
         parseSpokenText(text)
+        transcribedText = text
     }
 
     func parseSpokenText(_ text: String) {

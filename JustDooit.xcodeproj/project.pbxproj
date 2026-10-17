@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		9660AAE830821B1F001CFD62 /* BagiDooit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BagiDooit.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9660AAE830821B1F001CFD62 /* JustDooit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JustDooit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -51,7 +51,7 @@
 		9660AAE930821B1F001CFD62 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9660AAE830821B1F001CFD62 /* BagiDooit.app */,
+				9660AAE830821B1F001CFD62 /* JustDooit.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -74,7 +74,7 @@
 			);
 			name = JustDooit;
 			productName = JustDooit;
-			productReference = 9660AAE830821B1F001CFD62 /* BagiDooit.app */;
+			productReference = 9660AAE830821B1F001CFD62 /* JustDooit.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */

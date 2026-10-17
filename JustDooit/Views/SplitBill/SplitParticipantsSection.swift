@@ -99,7 +99,9 @@ struct SplitParticipantsSection: View {
                                         session.items[index].assignedParticipantIds.remove(participant.id)
                                     }
                                 }) {
-                                    Image(systemName: "xmark.circle.fill")
+                                    Label("Hapus \(participant.name) dari tagihan", systemImage: "xmark.circle.fill")
+                                        .labelStyle(.iconOnly)
+                                        .frame(minWidth: 44, minHeight: 44)
                                         .font(.footnote)
                                         .foregroundStyle(.gray.opacity(0.7))
                                 }

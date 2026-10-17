@@ -4,14 +4,6 @@ struct ExpenseRowView: View {
     let expense: Expense
     let onDelete: () -> Void
 
-    private var dateFormatter: DateFormatter {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .short
-        df.locale = Locale(identifier: "id_ID")
-        return df
-    }
-
     var body: some View {
         HStack(spacing: 12) {
             // Category Icon Badge
@@ -32,7 +24,7 @@ struct ExpenseRowView: View {
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
-                    Text(dateFormatter.string(from: expense.date))
+                    Text(expense.date, format: .dateTime.day().month(.abbreviated).year().hour().minute())
                         .font(.footnote)
                         .foregroundStyle(BagiTheme.muted)
 
@@ -59,10 +51,12 @@ struct ExpenseRowView: View {
                 .foregroundStyle(.primary)
 
             // Delete Button
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.footnote)
-                    .foregroundStyle(.gray.opacity(0.7))
+            Button(role: .destructive, action: onDelete) {
+                Label("Hapus \(expense.title)", systemImage: "trash")
+                    .labelStyle(.iconOnly)
+                    .font(.body)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(.rect)
             }
             .padding(.leading, 4)
         }

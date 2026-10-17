@@ -8,7 +8,7 @@ import PhotosUI
 
 struct AddExpenseSheet: View {
     @ObservedObject var expenseStore: ExpenseStore
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss
 
     @State private var selectedTab: ExpenseInputMethod = .manual
 
@@ -25,7 +25,6 @@ struct AddExpenseSheet: View {
     // Scanner Service State
     @StateObject private var scannerService = ReceiptScannerService()
     @State private var showCameraPicker: Bool = false
-    @State private var showPhotoPicker: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
 
     var body: some View {
@@ -78,8 +77,8 @@ struct AddExpenseSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Batal") {
-                        speechService.stopRecording()
-                        presentationMode.wrappedValue.dismiss()
+                        speechService.cancelRecording()
+                        dismiss()
                     }
                 }
             }
@@ -88,32 +87,68 @@ struct AddExpenseSheet: View {
                     scannerService.processImage(image)
                 }
             }
-            .onChange(of: selectedPhotoItem) { _, newItem in
-                Task {
-                    if let data = try? await newItem?.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        scannerService.processImage(image)
+            .task(id: selectedPhotoItem) {
+                guard let selectedPhotoItem else { return }
+                do {
+                    guard let data = try await selectedPhotoItem.loadTransferable(type: Data.self),
+                          let image = UIImage(data: data) else {
+                        scannerService.reportImageLoadingError()
+                        return
                     }
+                    guard !Task.isCancelled else { return }
+                    scannerService.processImage(image)
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    scannerService.reportImageLoadingError()
                 }
             }
-            .onChange(of: scannerService.scanResult?.totalAmount) { _, newTotal in
-                if let newTotal = newTotal, newTotal > 0 {
-                    self.amountText = "\(Int(newTotal))"
-                    if let merchant = scannerService.scanResult?.merchantName {
-                        self.title = merchant
-                    }
-                }
+            .onChange(of: scannerService.scanResult) { _, result in
+                guard selectedTab == .receiptScanner else { return }
+                applyReceiptResult(result)
             }
+            .onChange(of: speechService.transcribedText) { _, _ in
+                guard selectedTab == .voice else { return }
+                applySpeechResult()
+            }
+            .onChange(of: selectedTab) { oldValue, newValue in
+                if oldValue == .voice { speechService.cancelRecording() }
+                if newValue == .voice { applySpeechResult() }
+                if newValue == .receiptScanner { applyReceiptResult(scannerService.scanResult) }
+            }
+            .onDisappear { speechService.cancelRecording() }
         }
     }
 
     private var isSaveValid: Bool {
         let amt = Double(amountText) ?? 0
-        return !title.trimmingCharacters(in: .whitespaces).isEmpty && amt > 0
+        let inputBusy = (selectedTab == .voice && (speechService.isRecording || speechService.isRequestingPermission))
+            || (selectedTab == .receiptScanner && scannerService.isScanning)
+        let inputReady: Bool
+        switch selectedTab {
+        case .manual:
+            inputReady = true
+        case .voice:
+            inputReady = !speechService.transcribedText.isEmpty && speechService.errorMessage == nil
+        case .receiptScanner:
+            inputReady = scannerService.scanResult != nil && scannerService.errorMessage == nil
+        }
+        return inputReady && !inputBusy && amt.isFinite && !title.trimmingCharacters(in: .whitespaces).isEmpty && amt > 0
+    }
+
+    private func applyReceiptResult(_ result: ReceiptScanResult?) {
+        title = result?.merchantName ?? ""
+        amountText = result.map { String(Int($0.totalAmount)) } ?? ""
+    }
+
+    private func applySpeechResult() {
+        title = speechService.transcribedText.isEmpty ? "" : speechService.detectedTitle
+        amountText = !speechService.transcribedText.isEmpty && speechService.detectedAmount > 0
+            ? String(Int(speechService.detectedAmount)) : ""
+        category = speechService.detectedCategory
     }
 
     private func saveExpense() {
-        guard let amt = Double(amountText), amt > 0 else { return }
+        guard isSaveValid, let amt = Double(amountText), amt > 0 else { return }
         let newExpense = Expense(
             title: title.trimmingCharacters(in: .whitespaces),
             amount: amt,
@@ -124,7 +159,7 @@ struct AddExpenseSheet: View {
         )
         expenseStore.addExpense(newExpense)
         speechService.stopRecording()
-        presentationMode.wrappedValue.dismiss()
+        dismiss()
     }
 
     // MARK: - Manual Section
@@ -134,7 +169,7 @@ struct AddExpenseSheet: View {
 
     // MARK: - Voice Input Section
     private var voiceInputSection: some View {
-        VoiceExpenseInputView(speechService: speechService, title: $title, amountText: $amountText, category: $category)
+        VoiceExpenseInputView(speechService: speechService)
     }
 
     // MARK: - Receipt Scanner Section

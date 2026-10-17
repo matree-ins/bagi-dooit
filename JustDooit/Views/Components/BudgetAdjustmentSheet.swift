@@ -2,7 +2,7 @@ import SwiftUI
 
 struct BudgetAdjustmentSheet: View {
     @ObservedObject var expenseStore: ExpenseStore
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss
     @State private var currentLimit: Double = 150_000
 
     var body: some View {
@@ -47,7 +47,7 @@ struct BudgetAdjustmentSheet: View {
 
                 Button(action: {
                     expenseStore.dailyBudgetLimit = currentLimit
-                    presentationMode.wrappedValue.dismiss()
+                    dismiss()
                 }) {
                     Text("Simpan Target Budget")
                         .font(.headline)
@@ -64,7 +64,7 @@ struct BudgetAdjustmentSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Tutup") { presentationMode.wrappedValue.dismiss() }
+                    Button("Tutup") { dismiss() }
                 }
             }
             .onAppear {

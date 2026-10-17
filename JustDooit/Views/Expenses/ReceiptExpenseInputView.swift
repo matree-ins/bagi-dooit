@@ -18,6 +18,10 @@ struct ReceiptExpenseInputView: View {
             }
             .padding(.top, 8)
 
+            if let error = scannerService.errorMessage {
+                InputErrorNotice(message: error)
+            }
+
             // Scan Action Buttons
             HStack(spacing: 12) {
                 Button(action: { showCameraPicker = true }) {

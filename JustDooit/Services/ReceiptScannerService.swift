@@ -1,32 +1,20 @@
-//
-//  ReceiptScannerService.swift
-//  JustDooit
-//
-
 import SwiftUI
 import Combine
 import Vision
 import UIKit
 
-struct ScannedReceiptItem: Identifiable, Hashable {
-    var id: UUID = UUID()
-    var name: String
-    var price: Double
-}
-
-struct ReceiptScanResult {
-    var merchantName: String
-    var items: [ScannedReceiptItem]
-    var totalAmount: Double
-    var rawLines: [String]
-}
-
 class ReceiptScannerService: ObservableObject {
     @Published var isScanning: Bool = false
     @Published var scanResult: ReceiptScanResult?
     @Published var errorMessage: String?
+    private var scanID = UUID()
 
     func processImage(_ image: UIImage) {
+        scanID = UUID()
+        let currentScanID = scanID
+        scanResult = nil
+        errorMessage = nil
+        isScanning = false
         guard let cgImage = image.cgImage else {
             errorMessage = "Gagal membaca format gambar."
             return
@@ -39,6 +27,7 @@ class ReceiptScannerService: ObservableObject {
         let request = VNRecognizeTextRequest { [weak self] (req, err) in
             guard let self = self else { return }
             DispatchQueue.main.async {
+                guard self.scanID == currentScanID else { return }
                 self.isScanning = false
                 if let err = err {
                     self.errorMessage = "Gagal memindai teks: \(err.localizedDescription)"
@@ -51,6 +40,10 @@ class ReceiptScannerService: ObservableObject {
                 }
 
                 let lines = observations.compactMap { $0.topCandidates(1).first?.string }
+                guard !lines.isEmpty else {
+                    self.errorMessage = "Teks struk belum terbaca. Coba foto yang lebih jelas."
+                    return
+                }
                 self.scanResult = self.parseReceiptLines(lines)
             }
         }
@@ -63,6 +56,7 @@ class ReceiptScannerService: ObservableObject {
                 try requestHandler.perform([request])
             } catch {
                 DispatchQueue.main.async {
+                    guard self.scanID == currentScanID else { return }
                     self.isScanning = false
                     self.errorMessage = "Terjadi kesalahan saat OCR: \(error.localizedDescription)"
                 }
@@ -156,7 +150,17 @@ class ReceiptScannerService: ObservableObject {
     }
 
     // Demo sample receipt generator for smooth presentation during mini hackathon
+    func reportImageLoadingError() {
+        scanID = UUID()
+        scanResult = nil
+        isScanning = false
+        errorMessage = "Foto belum bisa dibuka. Pilih foto lain atau gunakan kamera."
+    }
+
     func loadDemoReceipt() {
+        scanID = UUID()
+        isScanning = false
+        errorMessage = nil
         let demoItems: [ScannedReceiptItem] = [
             ScannedReceiptItem(name: "Ayam Bakar Madu", price: 42_000),
             ScannedReceiptItem(name: "Es Teh Manis", price: 8_000),
