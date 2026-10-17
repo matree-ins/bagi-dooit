@@ -63,6 +63,7 @@ struct AddExpenseSheet: View {
     @State private var manualItemName: String = ""
     @State private var manualItemPrice: String = ""
     @State private var manualItemQty: Int = 1
+    @State private var personalAmountText: String = ""
     @State private var note: String = ""
 
     // Correction Sheet State for Review Screen ("Ketuk item untuk mengoreksi")
@@ -161,8 +162,10 @@ struct AddExpenseSheet: View {
                             initialSession: session,
                             onComplete: { dismiss() },
                             onBack: {
-                                currentStep = splitEntryStep
-                                preparedSession = nil
+                                withAnimation {
+                                    currentStep = splitEntryStep
+                                    preparedSession = nil
+                                }
                             }
                         )
                     }
@@ -260,6 +263,7 @@ struct AddExpenseSheet: View {
         manualItemName = ""
         manualItemPrice = ""
         manualItemQty = 1
+        personalAmountText = ""
         note = ""
         scannerService.scanResult = nil
         speechService.cancelRecording()
@@ -779,77 +783,572 @@ struct AddExpenseSheet: View {
         dismiss()
     }
 
-    // MARK: - 3. MANUAL ENTRY STEP
+    // MARK: - 3. MANUAL ENTRY STEP (Beranda Design System)
     private var manualEntryView: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 10) {
+            VStack(spacing: 16) {
+                // Header
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Catat Tagihan Manual")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Text("Masukkan rincian menu dan jumlah porsi secara manual.")
-                        .font(.footnote)
-                        .foregroundStyle(BagiTheme.muted)
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundStyle(Color(hex: "#111827"))
+
+                    Text("Bagi tagihan bersama teman atau simpan ke pengeluaran pribadi.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(hex: "#6B7280"))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
 
-                // Info Tagihan
-                VStack(alignment: .leading, spacing: 10) {
-                    TextField("Nama Tempat / Tagihan (cth: Solaria)", text: $title)
-                        .font(.headline)
-                        .padding(12)
-                        .background(BagiTheme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                // Mode Selector Pills
+                billModePills
 
-                    DatePicker("Tanggal", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                        .font(.footnote)
-                        .padding(12)
-                        .background(BagiTheme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                if billMode == .splitBill {
+                    splitBillInfoCard
+                    manualInputCard
+                    billItemsTableSection
+                } else {
+                    personalExpenseInfoCard
+                    personalAmountCard
+                    personalCategoryCard
+                    personalNoteCard
                 }
 
-                // Add Item Form
-                manualInputCard
-
-                // Items list
-                billItemsTableSection
-
-                // Mode Selection
-                billModeSelectionSection
-
-                // Action
+                // Final Action Button
                 actionButton
-                    .padding(.top, 8)
+                    .padding(.top, 6)
             }
-            .padding()
+            .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
+    }
+
+    // MARK: - Mode Selector Pills
+    private var billModePills: some View {
+        HStack(spacing: 10) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    billMode = .splitBill
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Bagi Tagihan")
+                        .font(.system(size: 14, weight: billMode == .splitBill ? .bold : .medium))
+                }
+                .foregroundStyle(billMode == .splitBill ? .white : Color(hex: "#6B7280"))
+                .padding(.vertical, 11)
+                .frame(maxWidth: .infinity)
+                .background(billMode == .splitBill ? Color(hex: "#3A6CFF") : Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: billMode == .splitBill ? Color(hex: "#3A6CFF").opacity(0.25) : Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    billMode = .personal
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Pengeluaran Pribadi")
+                        .font(.system(size: 14, weight: billMode == .personal ? .bold : .medium))
+                }
+                .foregroundStyle(billMode == .personal ? .white : Color(hex: "#6B7280"))
+                .padding(.vertical, 11)
+                .frame(maxWidth: .infinity)
+                .background(billMode == .personal ? Color(hex: "#3A6CFF") : Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: billMode == .personal ? Color(hex: "#3A6CFF").opacity(0.25) : Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Split Bill Info Card
+    private var splitBillInfoCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Informasi Tagihan")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color(hex: "#111827"))
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Nama Tempat / Acara")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color(hex: "#6B7280"))
+
+                TextField("Contoh: Solaria, Ngopi Bareng", text: $title)
+                    .font(.system(size: 15))
+                    .padding(12)
+                    .background(Color(hex: "#F9FAFB"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Waktu Tagihan")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color(hex: "#6B7280"))
+
+                DatePicker("Waktu Tagihan", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color(hex: "#F9FAFB"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                    )
+            }
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+    }
+
+    // MARK: - Manual Input Card Subcomponent
+    private var manualInputCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Tambah Menu / Item")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color(hex: "#111827"))
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Nama Menu")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color(hex: "#6B7280"))
+
+                TextField("Contoh: Nasi Goreng, Es Jeruk", text: $manualItemName)
+                    .font(.system(size: 15))
+                    .padding(12)
+                    .background(Color(hex: "#F9FAFB"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                    )
+            }
+
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Harga Satuan")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color(hex: "#6B7280"))
+
+                    HStack {
+                        Text("Rp")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color(hex: "#9CA3AF"))
+                        TextField("0", text: $manualItemPrice)
+                            .keyboardType(.numberPad)
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .padding(12)
+                    .background(Color(hex: "#F9FAFB"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Porsi")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color(hex: "#6B7280"))
+
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            if manualItemQty > 1 { manualItemQty -= 1 }
+                        }) {
+                            Image(systemName: "minus")
+                                .font(.system(size: 12, weight: .bold))
+                                .frame(width: 32, height: 32)
+                                .background(Color(hex: "#F3F4F6"))
+                                .foregroundStyle(Color(hex: "#4B5563"))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("\(manualItemQty)")
+                            .font(.system(size: 15, weight: .bold))
+                            .frame(minWidth: 24)
+
+                        Button(action: {
+                            manualItemQty += 1
+                        }) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .bold))
+                                .frame(width: 32, height: 32)
+                                .background(Color(hex: "#3A6CFF").opacity(0.12))
+                                .foregroundStyle(Color(hex: "#3A6CFF"))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(hex: "#F9FAFB"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                    )
+                }
+            }
+
+            Button(action: addManualItem) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text("Tambahkan ke Daftar Menu")
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(canAddManualItem ? Color(hex: "#3A6CFF") : Color.gray.opacity(0.35))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canAddManualItem)
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+    }
+
+    private var canAddManualItem: Bool {
+        !manualItemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        (Double(CurrencyFormatter.cleanNumberString(manualItemPrice)) ?? 0) > 0
+    }
+
+    private func addManualItem() {
+        guard let price = Double(CurrencyFormatter.cleanNumberString(manualItemPrice)), price > 0 else { return }
+        let cleanName = manualItemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        items.append(BillItemEntry(name: cleanName, price: price, quantity: manualItemQty))
+        manualItemName = ""
+        manualItemPrice = ""
+        manualItemQty = 1
+    }
+
+    // MARK: - Items Table with Qty Stepper
+    private var billItemsTableSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Daftar Menu Tagihan")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color(hex: "#111827"))
+                Spacer()
+                Text("\(items.count) Menu • \(totalItemsQuantity) Porsi")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color(hex: "#6B7280"))
+            }
+
+            if items.isEmpty {
+                VStack(spacing: 6) {
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 26))
+                        .foregroundStyle(Color(hex: "#9CA3AF"))
+                    Text("Belum ada menu yang ditambahkan")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color(hex: "#6B7280"))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(items.indices, id: \.self) { index in
+                        let item = items[index]
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(item.name)
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(Color(hex: "#111827"))
+                                Text("\(formatRp(item.price)) × \(item.quantity)")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Color(hex: "#6B7280"))
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 6) {
+                                Button(action: {
+                                    if items[index].quantity > 1 {
+                                        items[index].quantity -= 1
+                                    } else {
+                                        items.remove(at: index)
+                                    }
+                                }) {
+                                    Image(systemName: items[index].quantity == 1 ? "trash" : "minus")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .frame(width: 28, height: 28)
+                                        .background(items[index].quantity == 1 ? Color(hex: "#FEE2E2") : Color(hex: "#F3F4F6"))
+                                        .foregroundStyle(items[index].quantity == 1 ? Color(hex: "#EF4444") : Color(hex: "#4B5563"))
+                                        .clipShape(Circle())
+                                }
+                                .buttonStyle(.plain)
+
+                                Text("\(items[index].quantity)")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .frame(minWidth: 20)
+
+                                Button(action: {
+                                    items[index].quantity += 1
+                                }) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .frame(width: 28, height: 28)
+                                        .background(Color(hex: "#3A6CFF").opacity(0.12))
+                                        .foregroundStyle(Color(hex: "#3A6CFF"))
+                                        .clipShape(Circle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            Text(formatRp(item.totalPrice))
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(Color(hex: "#111827"))
+                                .frame(minWidth: 70, alignment: .trailing)
+                        }
+                        .padding(10)
+                        .background(Color(hex: "#F9FAFB"))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+
+                Divider()
+                    .padding(.vertical, 4)
+
+                HStack {
+                    Text("Total Tagihan")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color(hex: "#111827"))
+                    Spacer()
+                    Text(formatRp(totalBillAmount))
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Color(hex: "#3A6CFF"))
+                }
+            }
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+    }
+
+    // MARK: - Personal Expense Cards
+    private var personalExpenseInfoCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Detail Pengeluaran")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color(hex: "#111827"))
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Nama Pengeluaran")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color(hex: "#6B7280"))
+
+                TextField("Contoh: Makan Siang, Bensin, Kopi", text: $title)
+                    .font(.system(size: 15))
+                    .padding(12)
+                    .background(Color(hex: "#F9FAFB"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Tanggal")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color(hex: "#6B7280"))
+
+                DatePicker("Tanggal", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color(hex: "#F9FAFB"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                    )
+            }
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+    }
+
+    private var personalAmountCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Nominal Pengeluaran")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color(hex: "#111827"))
+
+            HStack {
+                Text("Rp")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(Color(hex: "#3A6CFF"))
+                TextField("0", text: $personalAmountText)
+                    .keyboardType(.numberPad)
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(Color(hex: "#111827"))
+            }
+            .padding(14)
+            .background(Color(hex: "#F9FAFB"))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(hex: "#3A6CFF").opacity(0.3), lineWidth: 1.5)
+            )
+
+            // Quick Amount Buttons
+            HStack(spacing: 8) {
+                quickAmountPill(label: "+10rb", value: 10_000)
+                quickAmountPill(label: "+25rb", value: 25_000)
+                quickAmountPill(label: "+50rb", value: 50_000)
+                quickAmountPill(label: "+100rb", value: 100_000)
+            }
+
+            if totalBillAmount > 0 {
+                Button(action: {
+                    personalAmountText = "\(Int(totalBillAmount))"
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 11))
+                        Text("Gunakan total daftar menu: \(formatRp(totalBillAmount))")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(Color(hex: "#3A6CFF"))
+                    .padding(.top, 2)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+    }
+
+    private func quickAmountPill(label: String, value: Double) -> some View {
+        Button(action: {
+            let current = Double(CurrencyFormatter.cleanNumberString(personalAmountText)) ?? 0
+            personalAmountText = "\(Int(current + value))"
+        }) {
+            Text(label)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color(hex: "#3A6CFF"))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(Color(hex: "#3A6CFF").opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var personalCategoryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Kategori Pengeluaran")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color(hex: "#111827"))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(ExpenseCategory.allCases) { cat in
+                        let isSelected = category == cat
+                        Button(action: { category = cat }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: cat.icon)
+                                    .font(.system(size: 13))
+                                Text(cat.rawValue)
+                                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                            }
+                            .foregroundStyle(isSelected ? .white : Color(hex: "#4B5563"))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(isSelected ? cat.color : Color(hex: "#F9FAFB"))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(isSelected ? Color.clear : Color(hex: "#E5E7EB"), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+    }
+
+    private var personalNoteCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Catatan (Opsional)")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color(hex: "#111827"))
+
+            TextField("Tambah catatan tambahan...", text: $note)
+                .font(.system(size: 15))
+                .padding(12)
+                .background(Color(hex: "#F9FAFB"))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color(hex: "#E5E7EB"), lineWidth: 1)
+                )
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
     }
 
     // MARK: - 4. VOICE ENTRY STEP
     private var voiceEntryView: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 10) {
+            VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Catat Tagihan via Suara")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Text("Sebutkan nama makanan dan nominal harganya.")
-                        .font(.footnote)
-                        .foregroundStyle(BagiTheme.muted)
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundStyle(Color(hex: "#111827"))
+
+                    Text("Sebutkan nama makanan dan nominal harganya")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(hex: "#6B7280"))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+
+                billModePills
 
                 voiceInputCard
 
                 billItemsTableSection
 
-                billModeSelectionSection
-
                 actionButton
-                    .padding(.top, 8)
+                    .padding(.top, 6)
             }
-            .padding()
+            .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
     }
@@ -859,100 +1358,6 @@ struct AddExpenseSheet: View {
         items = result.items.map {
             BillItemEntry(name: $0.name, price: $0.price, quantity: $0.quantity)
         }
-    }
-
-    // MARK: - Manual Input Card Subcomponent
-    private var manualInputCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Tambah Menu / Item")
-                .font(.headline)
-
-            TextField("Nama Menu (cth: Nasi Goreng, Es Jeruk)", text: $manualItemName)
-                .padding(12)
-                .background(BagiTheme.soft)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-            HStack(spacing: 12) {
-                HStack {
-                    Text("Rp")
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-                        .foregroundStyle(BagiTheme.muted)
-                    TextField("Harga Satuan", text: $manualItemPrice)
-                        .keyboardType(.numberPad)
-                        .font(.headline)
-                }
-                .padding(12)
-                .background(BagiTheme.soft)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                // Quantity Stepper
-                HStack(spacing: 8) {
-                    Button(action: {
-                        if manualItemQty > 1 { manualItemQty -= 1 }
-                    }) {
-                        Image(systemName: "minus")
-                            .font(.footnote)
-                            .frame(width: 32, height: 32)
-                            .background(BagiTheme.surface)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-
-                    Text("\(manualItemQty)")
-                        .font(.headline)
-                        .frame(minWidth: 28)
-
-                    Button(action: {
-                        manualItemQty += 1
-                    }) {
-                        Image(systemName: "plus")
-                            .font(.footnote)
-                            .frame(width: 32, height: 32)
-                            .background(BagiTheme.primary.opacity(0.15))
-                            .foregroundStyle(BagiTheme.primary)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(BagiTheme.soft)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
-
-            Button(action: addManualItem) {
-                HStack {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Tambahkan ke Daftar Menu")
-                }
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(canAddManualItem ? BagiTheme.action : Color.gray.opacity(0.4))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
-            .disabled(!canAddManualItem)
-        }
-        .padding(16)
-        .background(BagiTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
-    }
-
-    private var canAddManualItem: Bool {
-        !manualItemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        (Double(manualItemPrice) ?? 0) > 0
-    }
-
-    private func addManualItem() {
-        guard let price = Double(manualItemPrice), price > 0 else { return }
-        let cleanName = manualItemName.trimmingCharacters(in: .whitespacesAndNewlines)
-        items.append(BillItemEntry(name: cleanName, price: price, quantity: manualItemQty))
-        manualItemName = ""
-        manualItemPrice = ""
-        manualItemQty = 1
     }
 
     // MARK: - Voice Input Card Subcomponent
@@ -975,11 +1380,11 @@ struct AddExpenseSheet: View {
             Button(action: toggleVoiceRecording) {
                 ZStack {
                     Circle()
-                        .fill(speechService.isRecording ? Color.red.opacity(0.2) : BagiTheme.primary.opacity(0.15))
+                        .fill(speechService.isRecording ? Color.red.opacity(0.2) : Color(hex: "#3A6CFF").opacity(0.15))
                         .frame(width: 80, height: 80)
 
                     Circle()
-                        .fill(speechService.isRecording ? Color.red : BagiTheme.primary)
+                        .fill(speechService.isRecording ? Color.red : Color(hex: "#3A6CFF"))
                         .frame(width: 64, height: 64)
 
                     Image(systemName: speechService.isRecording ? "stop.fill" : "mic.fill")
@@ -995,7 +1400,7 @@ struct AddExpenseSheet: View {
                     Text("Total: \(CurrencyFormatter.format(speechService.detectedAmount))")
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundStyle(BagiTheme.primary)
+                        .foregroundStyle(Color(hex: "#3A6CFF"))
 
                     Button(action: {
                         let name = speechService.detectedTitle.isEmpty ? "Menu Suara" : speechService.detectedTitle
@@ -1007,21 +1412,22 @@ struct AddExpenseSheet: View {
                             .fontWeight(.bold)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(BagiTheme.primary.opacity(0.12))
-                            .foregroundStyle(BagiTheme.primary)
+                            .background(Color(hex: "#3A6CFF").opacity(0.12))
+                            .foregroundStyle(Color(hex: "#3A6CFF"))
                             .clipShape(Capsule())
                     }
                     .padding(.top, 6)
                 }
                 .padding()
-                .background(BagiTheme.soft)
+                .background(Color(hex: "#F9FAFB"))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .background(BagiTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
     }
 
     private func toggleVoiceRecording() {
@@ -1034,233 +1440,43 @@ struct AddExpenseSheet: View {
         }
     }
 
-    // MARK: - Items Table with Qty Stepper
-    private var billItemsTableSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Daftar Menu Makanan (\(items.count))")
-                    .font(.headline)
-                Spacer()
-                Text("\(totalItemsQuantity) Total Porsi")
-                    .font(.footnote)
-                    .foregroundStyle(BagiTheme.muted)
-            }
-
-            if items.isEmpty {
-                Text("Belum ada menu yang dicatat.")
-                    .font(.footnote)
-                    .foregroundStyle(BagiTheme.muted)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 16)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(items.indices, id: \.self) { index in
-                        let item = items[index]
-                        HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.name)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                Text("@ \(CurrencyFormatter.format(item.price))")
-                                    .font(.caption)
-                                    .foregroundStyle(BagiTheme.muted)
-                            }
-
-                            Spacer()
-
-                            // Qty Stepper
-                            HStack(spacing: 6) {
-                                Button(action: {
-                                    if items[index].quantity > 1 {
-                                        items[index].quantity -= 1
-                                    } else {
-                                        items.remove(at: index)
-                                    }
-                                }) {
-                                    Image(systemName: items[index].quantity == 1 ? "trash" : "minus")
-                                        .font(.caption2)
-                                        .frame(width: 26, height: 26)
-                                        .background(BagiTheme.soft)
-                                        .foregroundStyle(items[index].quantity == 1 ? .red : .primary)
-                                        .clipShape(Circle())
-                                }
-                                .buttonStyle(.plain)
-
-                                Text("\(items[index].quantity)")
-                                    .font(.footnote)
-                                    .fontWeight(.bold)
-                                    .frame(minWidth: 20)
-
-                                Button(action: {
-                                    items[index].quantity += 1
-                                }) {
-                                    Image(systemName: "plus")
-                                        .font(.caption2)
-                                        .frame(width: 26, height: 26)
-                                        .background(BagiTheme.primary.opacity(0.15))
-                                        .foregroundStyle(BagiTheme.primary)
-                                        .clipShape(Circle())
-                                }
-                                .buttonStyle(.plain)
-                            }
-
-                            Text(CurrencyFormatter.format(item.totalPrice))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .frame(minWidth: 70, alignment: .trailing)
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(BagiTheme.soft)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                }
-
-                // Subtotal / Total Preview
-                HStack {
-                    Text("Total Tagihan")
-                        .font(.headline)
-                    Spacer()
-                    Text(CurrencyFormatter.format(totalBillAmount))
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundStyle(BagiTheme.primary)
-                }
-                .padding(.top, 8)
-            }
-        }
-        .padding(16)
-        .background(BagiTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
-    }
-
-    // MARK: - Mode Selection: Personal vs Split Bill
-    private var billModeSelectionSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Tujuan Tagihan Ini")
-                .font(.headline)
-
-            VStack(spacing: 10) {
-                // Split Bill Option
-                Button(action: { billMode = .splitBill }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "person.2.fill")
-                            .font(.title3)
-                            .foregroundStyle(billMode == .splitBill ? Color.green : BagiTheme.muted)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Bagi Tagihan (Split Bill)")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.primary)
-                            Text("Hitung bagian masing-masing teman per makanan.")
-                                .font(.caption2)
-                                .foregroundStyle(BagiTheme.muted)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: billMode == .splitBill ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
-                            .foregroundStyle(billMode == .splitBill ? Color.green : BagiTheme.muted)
-                    }
-                    .padding(12)
-                    .background(billMode == .splitBill ? Color.green.opacity(0.08) : BagiTheme.soft)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(billMode == .splitBill ? Color.green : Color.clear, lineWidth: 1.5)
-                    )
-                }
-                .buttonStyle(.plain)
-
-                // Personal Expense Option
-                Button(action: { billMode = .personal }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "person.fill")
-                            .font(.title3)
-                            .foregroundStyle(billMode == .personal ? BagiTheme.action : BagiTheme.muted)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Pengeluaran Pribadi")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.primary)
-                            Text("Catat langsung ke total pengeluaran pribadi kamu.")
-                                .font(.caption2)
-                                .foregroundStyle(BagiTheme.muted)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: billMode == .personal ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
-                            .foregroundStyle(billMode == .personal ? BagiTheme.action : BagiTheme.muted)
-                    }
-                    .padding(12)
-                    .background(billMode == .personal ? BagiTheme.primary.opacity(0.08) : BagiTheme.soft)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(billMode == .personal ? BagiTheme.action : Color.clear, lineWidth: 1.5)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-
-            if billMode == .personal {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Kategori Pengeluaran")
-                        .font(.footnote)
-                        .fontWeight(.medium)
-                        .foregroundStyle(BagiTheme.muted)
-
-                    Picker("Kategori", selection: $category) {
-                        ForEach(ExpenseCategory.allCases, id: \.self) { cat in
-                            Text(cat.rawValue).tag(cat)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .padding(10)
-                    .background(BagiTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                    TextField("Catatan tambahan (opsional)", text: $note)
-                        .font(.footnote)
-                        .padding(12)
-                        .background(BagiTheme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                }
-                .padding(.top, 4)
-            }
-        }
-    }
-
     // MARK: - Final Action Button
     private var actionButton: some View {
         Button(action: handleAction) {
             HStack(spacing: 8) {
                 if billMode == .personal {
                     Image(systemName: "checkmark.circle.fill")
-                    Text("Simpan ke Riwayat Pengeluaran")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("Simpan Pengeluaran Pribadi")
+                        .font(.system(size: 16, weight: .bold))
                 } else {
-                    Image(systemName: "arrow.right.circle.fill")
-                    Text("Lanjut ke Pembagian Menu (\(items.count) Menu)")
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 16, weight: .bold))
+                    Text(items.isEmpty ? "Lanjut ke Bagi Tagihan" : "Lanjut ke Pembagian (\(items.count) Menu)")
+                        .font(.system(size: 16, weight: .bold))
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 14, weight: .bold))
                 }
             }
-            .font(.headline)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 52)
-            .background(canProceed ? (billMode == .personal ? BagiTheme.action : Color.green) : Color.gray.opacity(0.4))
+            .frame(height: 52)
+            .background(canProceed ? Color(hex: "#3A6CFF") : Color.gray.opacity(0.35))
             .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(color: canProceed ? Color(hex: "#3A6CFF").opacity(0.25) : Color.clear, radius: 8, x: 0, y: 4)
         }
+        .buttonStyle(.plain)
         .disabled(!canProceed)
     }
 
     private var canProceed: Bool {
-        return !items.isEmpty && totalBillAmount.isFinite && totalBillAmount > 0
-            && items.allSatisfy { $0.price.isFinite && $0.price > 0 && $0.quantity > 0 }
+        if billMode == .personal {
+            let direct = Double(CurrencyFormatter.cleanNumberString(personalAmountText)) ?? 0
+            return direct > 0 || (totalBillAmount.isFinite && totalBillAmount > 0)
+        } else {
+            let scratch = Double(CurrencyFormatter.cleanNumberString(manualItemPrice)) ?? 0
+            return !items.isEmpty || scratch > 0
+        }
     }
 
     private func handleAction() {
@@ -1271,20 +1487,34 @@ struct AddExpenseSheet: View {
             : title.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if billMode == .personal {
+            let directAmount = Double(CurrencyFormatter.cleanNumberString(personalAmountText)) ?? 0
+            let finalAmount = directAmount > 0 ? directAmount : totalBillAmount
+            guard finalAmount > 0 else { return }
+
+            let itemNote = items.isEmpty ? "" : "Item: \(items.map { "\($0.quantity)x \($0.name)" }.joined(separator: ", "))"
+            let finalNote = note.isEmpty ? itemNote : (itemNote.isEmpty ? note : "\(note) (\(itemNote))")
+
             let expense = Expense(
                 title: billTitle,
-                amount: totalBillAmount,
+                amount: finalAmount,
                 category: category,
                 date: date,
-                note: note.isEmpty ? "Item: \(items.map { "\($0.quantity)x \($0.name)" }.joined(separator: ", "))" : note,
+                note: finalNote,
                 inputMethod: currentStep == .voiceEntry ? .voice : .manual
             )
             expenseStore.addExpense(expense)
             dismiss()
         } else {
-            let splitItems = items.map {
+            var splitItems = items.map {
                 SplitItem(name: $0.name, price: $0.price, quantity: $0.quantity, assignedParticipantIds: [])
             }
+            let scratchPrice = Double(CurrencyFormatter.cleanNumberString(manualItemPrice)) ?? 0
+            if scratchPrice > 0 {
+                let name = manualItemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Menu Makanan" : manualItemName.trimmingCharacters(in: .whitespacesAndNewlines)
+                splitItems.append(SplitItem(name: name, price: scratchPrice, quantity: manualItemQty, assignedParticipantIds: []))
+            }
+            guard !splitItems.isEmpty else { return }
+
             let session = SplitBillSession(
                 title: billTitle,
                 date: date,
@@ -1295,7 +1525,9 @@ struct AddExpenseSheet: View {
             )
             splitEntryStep = currentStep
             self.preparedSession = session
-            self.currentStep = .splitBill
+            withAnimation(.easeInOut(duration: 0.25)) {
+                self.currentStep = .splitBill
+            }
         }
     }
 }
