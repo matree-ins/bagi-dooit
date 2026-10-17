@@ -43,7 +43,18 @@ jobs:
           echo "Setting build number to $BUILD_NUMBER"
           xcrun agvtool new-version -all "$BUILD_NUMBER"
 
-      - name: Install Apple Certificate and Provisioning Profile
+      - name: Setup App Store Connect API Key
+        env:
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        run: |
+          if [ -n "$APP_STORE_CONNECT_API_KEY_BASE64" ] && [ -n "$APP_STORE_CONNECT_API_KEY_ID" ]; then
+            mkdir -p ~/.appstoreconnect/private_keys
+            echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+            echo "App Store Connect API Key configured."
+          fi
+
+      - name: Install Apple Certificate and Provisioning Profile (if provided)
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
@@ -51,7 +62,7 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           if [ -z "$BUILD_CERTIFICATE_BASE64" ]; then
-            echo "Skipping manual keychain import (using App Store Connect API / automatic signing)."
+            echo "No manual certificate provided, proceeding with App Store Connect API or Ad-Hoc signing."
             exit 0
           fi
 
@@ -70,7 +81,9 @@ jobs:
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
           cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
+          cp "$PP_PATH" ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
 
       - name: Create ExportOptions.plist
         run: |
@@ -95,33 +108,42 @@ jobs:
           </plist>
           EOF
 
-      - name: Setup App Store Connect API Key
-        env:
-          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
-          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-        run: |
-          if [ -n "$APP_STORE_CONNECT_API_KEY_BASE64" ] && [ -n "$APP_STORE_CONNECT_API_KEY_ID" ]; then
-            mkdir -p ~/.appstoreconnect/private_keys
-            echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
-            echo "App Store Connect API Key configured."
-          fi
-
       - name: Build Archive
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         run: |
-          xcodebuild -project JustDooit.xcodeproj \
-            -scheme JustDooit \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
-            archive \
-            CODE_SIGNING_ALLOWED=YES
+          if [ -n "$APP_STORE_CONNECT_API_KEY_ID" ] && [ -f ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 ]; then
+            echo "Archiving with App Store Connect API Key & automatic provisioning..."
+            xcodebuild -project JustDooit.xcodeproj \
+              -scheme JustDooit \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 \
+              -authenticationKeyID "$APP_STORE_CONNECT_API_KEY_ID" \
+              -authenticationKeyIssuerID "$APP_STORE_CONNECT_API_ISSUER_ID" \
+              archive
+          else
+            echo "Archiving with local Ad-Hoc signature (full signing occurs during exportArchive)..."
+            xcodebuild -project JustDooit.xcodeproj \
+              -scheme JustDooit \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
+              CODE_SIGN_IDENTITY="-" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=YES \
+              archive
+          fi
 
       - name: Export & Upload to TestFlight
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         run: |
-          if [ -n "$APP_STORE_CONNECT_API_KEY_ID" ]; then
+          if [ -n "$APP_STORE_CONNECT_API_KEY_ID" ] && [ -f ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 ]; then
             xcodebuild -exportArchive \
               -archivePath $RUNNER_TEMP/JustDooit.xcarchive \
               -exportOptionsPlist ExportOptions.plist \
