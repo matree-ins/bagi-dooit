@@ -1,7 +1,7 @@
 import Foundation
 
 /// Only recognized local actions can open an entry sheet. A draft never saves itself.
-struct QuickEntryRequest: Identifiable {
+struct QuickEntryRequest: Identifiable, Equatable {
     let id = UUID()
     let method: ExpenseInputMethod
     var title: String = ""

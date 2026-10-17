@@ -47,20 +47,23 @@ final class ExpenseStore {
 
     @ObservationIgnored private let storageKey = "JustDooit_Expenses_v1"
     @ObservationIgnored private let splitSessionsKey = "JustDooit_SplitSessions_v1"
+    @ObservationIgnored private let dummyCleanedKey = "JustDooit_HasCleanedDummyData_v4"
     @ObservationIgnored private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        if let savedName = defaults.string(forKey: "UserNameKey"), !savedName.isEmpty {
+        if let savedName = defaults.string(forKey: "UserNameKey"), !savedName.isEmpty, savedName != "Rina" {
             self.userName = savedName
         } else {
-            self.userName = "Rina"
+            self.userName = "Teman Dooit"
         }
         if let savedBudget = defaults.value(forKey: "DailyBudgetLimitKey") as? Double, savedBudget > 0 {
             self.dailyBudgetLimit = savedBudget
         }
         loadFromStorage()
         loadSplitSessionsFromStorage()
+        cleanDummyDataIfNeeded()
+        syncAllSplitSessions()
     }
 
     var totalExpensesAllTime: Double {
@@ -81,12 +84,21 @@ final class ExpenseStore {
     }
 
     func deleteExpense(at offsets: IndexSet) {
+        let toDelete = offsets.map { expenses[$0] }
+        for exp in toDelete {
+            if let sessionId = exp.splitSessionId {
+                splitSessions.removeAll { $0.id == sessionId }
+            }
+        }
         for index in offsets.sorted(by: >) {
             expenses.remove(at: index)
         }
     }
 
     func deleteExpense(id: UUID) {
+        if let exp = expenses.first(where: { $0.id == id }), let sessionId = exp.splitSessionId {
+            splitSessions.removeAll { $0.id == sessionId }
+        }
         expenses.removeAll { $0.id == id }
     }
 
@@ -96,16 +108,85 @@ final class ExpenseStore {
         } else {
             splitSessions.insert(session, at: 0)
         }
+        syncExpenseForSplitSession(session)
     }
 
     func updateSplitSession(_ session: SplitBillSession) {
         if let idx = splitSessions.firstIndex(where: { $0.id == session.id }) {
             splitSessions[idx] = session
         }
+        syncExpenseForSplitSession(session)
     }
 
     func deleteSplitSession(id: UUID) {
         splitSessions.removeAll { $0.id == id }
+        expenses.removeAll { $0.splitSessionId == id }
+    }
+
+    func syncExpenseForSplitSession(_ session: SplitBillSession) {
+        // Find current user's participant ("Saya" or userName)
+        let myParticipant = session.participants.first(where: {
+            $0.name == "Saya" || $0.name.localizedCaseInsensitiveCompare(userName) == .orderedSame
+        }) ?? session.participants.first
+
+        let myPortion: Double
+        if let p = myParticipant {
+            let total = session.participantTotal(for: p.id)
+            if total > 0 {
+                myPortion = total
+            } else if session.participants.count > 0 && session.total > 0 {
+                myPortion = session.total / Double(session.participants.count)
+            } else {
+                myPortion = session.total
+            }
+        } else {
+            myPortion = session.total
+        }
+
+        guard myPortion > 0 else {
+            expenses.removeAll { $0.splitSessionId == session.id }
+            return
+        }
+
+        let billTitle = session.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Makan Bareng"
+            : session.title.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let otherCount = max(0, session.participants.count - 1)
+        let note = otherCount > 0 ? "Split bill dengan \(otherCount) orang" : "Tagihan bersama"
+
+        if let existingIdx = expenses.firstIndex(where: { $0.splitSessionId == session.id }) {
+            expenses[existingIdx].title = billTitle
+            expenses[existingIdx].amount = myPortion
+            expenses[existingIdx].date = session.date
+            expenses[existingIdx].note = note
+            expenses[existingIdx].inputMethod = .splitBill
+        } else {
+            let expense = Expense(
+                title: billTitle,
+                amount: myPortion,
+                category: .food,
+                date: session.date,
+                note: note,
+                inputMethod: .splitBill,
+                splitSessionId: session.id
+            )
+            expenses.insert(expense, at: 0)
+        }
+    }
+
+    func syncAllSplitSessions() {
+        for session in splitSessions {
+            syncExpenseForSplitSession(session)
+        }
+    }
+
+    func clearAllData() {
+        expenses.removeAll()
+        splitSessions.removeAll()
+        saveToStorage()
+        saveSplitSessionsToStorage()
+        savingsAI.invalidate()
     }
 
     func resetToDemoData() {
@@ -124,6 +205,40 @@ final class ExpenseStore {
         ]
     }
 
+    private func cleanDummyDataIfNeeded() {
+        guard !defaults.bool(forKey: dummyCleanedKey) else { return }
+
+        let dummyTitles: Set<String> = [
+            "Makan Siang Soto Betawi",
+            "Kopi Kenangan Mantan",
+            "Bensin Pertamax",
+            "Belanja Supermarket",
+            "Nongkrong Cafe & Snack",
+            "Paket Data Internet"
+        ]
+
+        let initialExpenseCount = expenses.count
+        expenses.removeAll { dummyTitles.contains($0.title) }
+        if expenses.count != initialExpenseCount {
+            saveToStorage()
+        }
+
+        let initialSplitCount = splitSessions.count
+        splitSessions.removeAll { session in
+            session.title == "Makan Bareng" &&
+            session.participants.map(\.name).sorted() == ["Budi", "Citra", "Rina"]
+        }
+        if splitSessions.count != initialSplitCount {
+            saveSplitSessionsToStorage()
+        }
+
+        if userName == "Rina" {
+            userName = "Teman Dooit"
+        }
+
+        defaults.set(true, forKey: dummyCleanedKey)
+    }
+
     private func saveToStorage() {
         if let encoded = try? JSONEncoder().encode(expenses) {
             defaults.set(encoded, forKey: storageKey)
@@ -135,8 +250,7 @@ final class ExpenseStore {
            let decoded = try? JSONDecoder().decode([Expense].self, from: data) {
             self.expenses = decoded
         } else {
-            // Seed with rich realistic demo data for mini hackathon
-            resetToDemoData()
+            self.expenses = []
         }
     }
 
@@ -151,23 +265,7 @@ final class ExpenseStore {
            let decoded = try? JSONDecoder().decode([SplitBillSession].self, from: data) {
             self.splitSessions = decoded
         } else {
-            let rina = SplitParticipant(name: "Rina", phoneNumber: "")
-            let budi = SplitParticipant(name: "Budi", phoneNumber: "081234567890", isPaid: false)
-            let citra = SplitParticipant(name: "Citra", phoneNumber: "085712345678", isPaid: false)
-
-            let item1 = SplitItem(name: "Nasi Goreng Spesial", price: 35_000, quantity: 2, assignedParticipantIds: [rina.id, budi.id])
-            let item2 = SplitItem(name: "Ayam Bakar Madu", price: 42_000, quantity: 1, assignedParticipantIds: [citra.id])
-            let item3 = SplitItem(name: "Es Teh Manis", price: 8_000, quantity: 3, assignedParticipantIds: [rina.id, budi.id, citra.id])
-
-            let demoSession = SplitBillSession(
-                title: "Makan Bareng",
-                date: Date(),
-                participants: [rina, budi, citra],
-                items: [item1, item2, item3],
-                taxPercentage: 10,
-                servicePercentage: 5
-            )
-            self.splitSessions = [demoSession]
+            self.splitSessions = []
         }
     }
 }

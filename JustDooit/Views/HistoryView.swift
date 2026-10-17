@@ -7,9 +7,9 @@ import SwiftUI
 import Charts
 
 enum HistoryPeriod: String, CaseIterable, Identifiable {
-    case thisMonth = "Bulan Ini"
-    case sevenDays = "7 Hari"
     case today = "Hari Ini"
+    case sevenDays = "7 Hari"
+    case thisMonth = "Bulan Ini"
     case all = "Semua"
 
     var id: String { rawValue }
@@ -46,6 +46,7 @@ struct HistoryView: View {
     @State private var selectedChartType: ChartType = .timeTrend
     @State private var showAddSheet: Bool = false
     @State private var showProfileSheet: Bool = false
+    @State private var selectedSplitSession: SplitBillSession? = nil
     @State private var expenseToDelete: Expense? = nil
     @State private var showDeleteConfirmation: Bool = false
 
@@ -68,32 +69,28 @@ struct HistoryView: View {
         let now = Date()
 
         return expenseStore.expenses.filter { expense in
-            // Period filter
+            let matchesCategory = selectedCategory == nil || expense.category == selectedCategory
+            let matchesSearch = searchText.isEmpty ||
+                expense.title.localizedCaseInsensitiveContains(searchText) ||
+                expense.note.localizedCaseInsensitiveContains(searchText)
+
             let matchesPeriod: Bool
             switch selectedPeriod {
-            case .all:
-                matchesPeriod = true
             case .today:
                 matchesPeriod = calendar.isDateInToday(expense.date)
             case .sevenDays:
-                if let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: calendar.startOfDay(for: now)) {
+                if let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: now) {
                     matchesPeriod = expense.date >= sevenDaysAgo
                 } else {
                     matchesPeriod = true
                 }
             case .thisMonth:
                 matchesPeriod = calendar.isDate(expense.date, equalTo: now, toGranularity: .month)
+            case .all:
+                matchesPeriod = true
             }
 
-            // Category filter
-            let matchesCategory = selectedCategory == nil || expense.category == selectedCategory
-
-            // Search filter
-            let matchesSearch = searchText.isEmpty ||
-                expense.title.localizedCaseInsensitiveContains(searchText) ||
-                expense.note.localizedCaseInsensitiveContains(searchText)
-
-            return matchesPeriod && matchesCategory && matchesSearch
+            return matchesCategory && matchesSearch && matchesPeriod
         }
     }
 
@@ -101,28 +98,22 @@ struct HistoryView: View {
         filteredExpenses.reduce(0) { $0 + $1.amount }
     }
 
-    private var averageFilteredAmount: Double {
+    private var averageExpense: Double {
         guard !filteredExpenses.isEmpty else { return 0 }
         return totalFilteredAmount / Double(filteredExpenses.count)
     }
 
-    private var topCategory: (category: ExpenseCategory, amount: Double)? {
-        guard !filteredExpenses.isEmpty else { return nil }
-        var map: [ExpenseCategory: Double] = [:]
-        for exp in filteredExpenses {
-            map[exp.category, default: 0] += exp.amount
-        }
-        guard let maxEntry = map.max(by: { $0.value < $1.value }) else { return nil }
-        return (category: maxEntry.key, amount: maxEntry.value)
+    private var highestExpense: Expense? {
+        filteredExpenses.max(by: { $0.amount < $1.amount })
     }
 
-    // MARK: - Chart Data Computation
+    // Time-based aggregation for charts
     private var timeChartData: [TimeChartDataPoint] {
         let calendar = Calendar.current
         let now = Date()
 
         switch selectedPeriod {
-        case .today:
+        case .today, .all:
             let today = calendar.startOfDay(for: now)
             let slots: [(label: String, startHour: Int, endHour: Int)] = [
                 ("Pagi", 6, 12),
@@ -169,22 +160,6 @@ struct HistoryView: View {
                 }
             }
             return points
-
-        case .all:
-            let grouped = Dictionary(grouping: filteredExpenses) { calendar.startOfDay(for: $0.date) }
-            let sortedDates = grouped.keys.sorted()
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "id_ID")
-            formatter.dateFormat = "d MMM"
-
-            let recentDates = sortedDates.suffix(7)
-            if recentDates.isEmpty {
-                return []
-            }
-            return recentDates.map { date in
-                let sum = grouped[date]?.reduce(0) { $0 + $1.amount } ?? 0
-                return TimeChartDataPoint(label: formatter.string(from: date), amount: sum, date: date)
-            }
         }
     }
 
@@ -264,6 +239,16 @@ struct HistoryView: View {
             .sheet(isPresented: $showAddSheet) {
                 AddExpenseSheet(expenseStore: expenseStore)
             }
+            .sheet(item: $selectedSplitSession) { session in
+                NavigationStack {
+                    SplitBillView(
+                        expenseStore: expenseStore,
+                        initialSession: session,
+                        onComplete: { selectedSplitSession = nil },
+                        isDetailMode: true
+                    )
+                }
+            }
             .alert("Hapus Pengeluaran", isPresented: $showDeleteConfirmation, presenting: expenseToDelete) { expense in
                 Button("Batal", role: .cancel) { }
                 Button("Hapus", role: .destructive) {
@@ -298,60 +283,63 @@ struct HistoryView: View {
 
             Text(formatRp(totalFilteredAmount))
                 .font(.system(size: 32, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
 
-            // Mini statistics tags
-            HStack(spacing: 8) {
-                miniStatTag(title: "Transaksi", value: "\(filteredExpenses.count)")
-                miniStatTag(title: "Rata-rata", value: formatCompactAmount(averageFilteredAmount))
-                if let topCat = topCategory {
-                    miniStatTag(title: "Terbanyak", value: topCat.category.rawValue)
+            HStack(spacing: 12) {
+                HStack(spacing: 6) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("\(filteredExpenses.count) transaksi")
+                        .font(.system(size: 13, weight: .medium))
                 }
+                .foregroundStyle(Color.white.opacity(0.9))
+
+                Text("•")
+                    .foregroundStyle(Color.white.opacity(0.5))
+
+                HStack(spacing: 6) {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("Rata-rata \(formatCompactAmount(averageExpense))/transaksi")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundStyle(Color.white.opacity(0.9))
             }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(hex: "#3A6CFF"))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "#3A6CFF"), Color(hex: "#2F5CE0")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: Color(hex: "#3A6CFF").opacity(0.22), radius: 10, x: 0, y: 5)
-    }
-
-    private func miniStatTag(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.75))
-            Text(value)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.white.opacity(0.15))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Period Selector
     private var periodSelector: some View {
-        HStack(spacing: 8) {
-            ForEach(HistoryPeriod.allCases) { period in
-                let isSelected = selectedPeriod == period
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedPeriod = period
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(HistoryPeriod.allCases) { period in
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedPeriod = period
+                        }
+                    }) {
+                        Text(period.rawValue)
+                            .font(.system(size: 13, weight: selectedPeriod == period ? .semibold : .medium))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(selectedPeriod == period ? Color(hex: "#3A6CFF") : Color.white)
+                            .foregroundStyle(selectedPeriod == period ? Color.white : Color(hex: "#4B5563"))
+                            .clipShape(Capsule())
+                            .shadow(color: Color.black.opacity(selectedPeriod == period ? 0.08 : 0.03), radius: 4, x: 0, y: 2)
                     }
-                }) {
-                    Text(period.rawValue)
-                        .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                        .foregroundStyle(isSelected ? .white : Color(hex: "#6B7280"))
-                        .padding(.vertical, 9)
-                        .frame(maxWidth: .infinity)
-                        .background(isSelected ? Color(hex: "#3A6CFF") : Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: isSelected ? Color(hex: "#3A6CFF").opacity(0.25) : Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -359,34 +347,28 @@ struct HistoryView: View {
     // MARK: - Statistics & Chart Card
     private var statisticsChartCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Chart Header & Switcher
+            // Chart Type Switcher Header
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Statistik Pengeluaran")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Color(hex: "#111827"))
-                    Text(selectedChartType == .timeTrend ? "Grafik pengeluaran berdasarkan waktu" : "Proporsi pengeluaran per kategori")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color(hex: "#6B7280"))
-                }
+                Text("Analisis Visual")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color(hex: "#111827"))
 
                 Spacer()
 
-                // Chart mode toggle
+                // Segmented picker
                 HStack(spacing: 4) {
                     ForEach(ChartType.allCases) { type in
-                        let isSelected = selectedChartType == type
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedChartType = type
                             }
                         }) {
                             Text(type.rawValue)
-                                .font(.system(size: 12, weight: isSelected ? .bold : .medium))
-                                .foregroundStyle(isSelected ? Color(hex: "#3A6CFF") : Color(hex: "#6B7280"))
+                                .font(.system(size: 12, weight: selectedChartType == type ? .semibold : .regular))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
-                                .background(isSelected ? Color(hex: "#3A6CFF").opacity(0.12) : Color.clear)
+                                .background(selectedChartType == type ? Color(hex: "#3A6CFF") : Color.clear)
+                                .foregroundStyle(selectedChartType == type ? Color.white : Color(hex: "#6B7280"))
                                 .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -397,22 +379,22 @@ struct HistoryView: View {
                 .clipShape(Capsule())
             }
 
-            // Chart Content
             if filteredExpenses.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "chart.bar.xaxis")
                         .font(.system(size: 32))
                         .foregroundStyle(Color(hex: "#9CA3AF"))
-                    Text("Belum ada data pengeluaran untuk grafik")
-                        .font(.system(size: 13, weight: .medium))
+                    Text("Belum ada data grafik di periode ini")
+                        .font(.system(size: 13))
                         .foregroundStyle(Color(hex: "#6B7280"))
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 180)
+                .frame(height: 160)
             } else {
-                if selectedChartType == .timeTrend {
+                switch selectedChartType {
+                case .timeTrend:
                     timeTrendChart
-                } else {
+                case .category:
                     categoryBreakdownChart
                 }
             }
@@ -427,10 +409,10 @@ struct HistoryView: View {
     private var timeTrendChart: some View {
         VStack(alignment: .leading, spacing: 10) {
             Chart {
-                ForEach(timeChartData) { point in
+                ForEach(timeChartData) { item in
                     BarMark(
-                        x: .value("Waktu", point.label),
-                        y: .value("Nominal", point.amount)
+                        x: .value("Waktu", item.label),
+                        y: .value("Nominal", item.amount)
                     )
                     .foregroundStyle(
                         LinearGradient(
@@ -439,93 +421,52 @@ struct HistoryView: View {
                             endPoint: .bottom
                         )
                     )
-                    .cornerRadius(5)
-                }
-
-                if averageFilteredAmount > 0 && timeChartData.count > 1 {
-                    RuleMark(y: .value("Rata-rata", averageFilteredAmount))
-                        .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
-                        .foregroundStyle(Color(hex: "#F59E0B"))
-                        .annotation(position: .top, alignment: .trailing) {
-                            Text("Rata-rata")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(Color(hex: "#F59E0B"))
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color.white.opacity(0.9))
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
+                    .cornerRadius(6)
                 }
             }
-            .frame(height: 190)
             .chartYAxis {
                 AxisMarks(position: .leading) { value in
-                    if let doubleVal = value.as(Double.self) {
-                        AxisValueLabel {
-                            Text(formatCompactAmount(doubleVal))
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
+                        .foregroundStyle(Color(hex: "#E5E7EB"))
+                    AxisValueLabel {
+                        if let d = value.as(Double.self) {
+                            Text(formatCompactAmount(d))
                                 .font(.system(size: 10))
                                 .foregroundStyle(Color(hex: "#9CA3AF"))
                         }
                     }
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
-                        .foregroundStyle(Color(hex: "#E5E7EB"))
                 }
             }
             .chartXAxis {
-                AxisMarks { value in
-                    AxisValueLabel {
-                        if let str = value.as(String.self) {
-                            Text(str)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Color(hex: "#6B7280"))
-                        }
-                    }
-                }
-            }
-
-            HStack {
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(Color(hex: "#3A6CFF"))
-                        .frame(width: 8, height: 8)
-                    Text("Pengeluaran")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color(hex: "#6B7280"))
-                }
-                Spacer()
-                HStack(spacing: 5) {
-                    Rectangle()
-                        .stroke(Color(hex: "#F59E0B"), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
-                        .frame(width: 14, height: 1.5)
-                    Text("Garis Rata-rata")
-                        .font(.system(size: 11))
+                AxisMarks { _ in
+                    AxisValueLabel()
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Color(hex: "#6B7280"))
                 }
             }
-            .padding(.top, 4)
+            .frame(height: 170)
         }
     }
 
-    // MARK: - Category Donut Chart & Breakdown
+    // MARK: - Category Breakdown Chart
     private var categoryBreakdownChart: some View {
         VStack(spacing: 16) {
-            // Donut Chart
-            ZStack {
-                Chart(categoryChartData) { item in
-                    SectorMark(
-                        angle: .value("Nominal", item.amount),
-                        innerRadius: .ratio(0.65),
-                        angularInset: 1.5
-                    )
-                    .foregroundStyle(item.category.color)
-                    .cornerRadius(3)
-                }
-                .frame(height: 180)
-
+            // Donut chart
+            Chart(categoryChartData) { item in
+                SectorMark(
+                    angle: .value("Nominal", item.amount),
+                    innerRadius: .ratio(0.62),
+                    angularInset: 2.0
+                )
+                .foregroundStyle(item.category.color)
+                .cornerRadius(4)
+            }
+            .frame(height: 160)
+            .overlay {
                 VStack(spacing: 2) {
                     Text("Total")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color(hex: "#6B7280"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color(hex: "#9CA3AF"))
                     Text(formatCompactAmount(totalFilteredAmount))
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Color(hex: "#111827"))
@@ -599,68 +540,78 @@ struct HistoryView: View {
                             .font(.system(size: 15))
                             .foregroundStyle(Color(hex: "#9CA3AF"))
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 11)
+            .padding(.vertical, 10)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
+            .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 1)
 
-            // Category Horizontal Pills
+            // Category Filter Pills
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    categoryFilterChip(title: "Semua Kategori", icon: nil, isSelected: selectedCategory == nil) {
-                        selectedCategory = nil
+                    // All Pill
+                    Button(action: { selectedCategory = nil }) {
+                        Text("Semua Kategori")
+                            .font(.system(size: 12, weight: selectedCategory == nil ? .semibold : .regular))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedCategory == nil ? Color(hex: "#111827") : Color.white)
+                            .foregroundStyle(selectedCategory == nil ? Color.white : Color(hex: "#4B5563"))
+                            .clipShape(Capsule())
+                            .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
                     }
+                    .buttonStyle(.plain)
 
                     ForEach(ExpenseCategory.allCases) { cat in
-                        categoryFilterChip(title: cat.rawValue, icon: cat.icon, isSelected: selectedCategory == cat) {
-                            selectedCategory = cat
+                        Button(action: {
+                            if selectedCategory == cat {
+                                selectedCategory = nil
+                            } else {
+                                selectedCategory = cat
+                            }
+                        }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: cat.icon)
+                                    .font(.system(size: 10))
+                                Text(cat.rawValue)
+                                    .font(.system(size: 12, weight: selectedCategory == cat ? .semibold : .regular))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedCategory == cat ? cat.color : Color.white)
+                            .foregroundStyle(selectedCategory == cat ? Color.white : Color(hex: "#4B5563"))
+                            .clipShape(Capsule())
+                            .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.vertical, 2)
             }
         }
-    }
-
-    private func categoryFilterChip(title: String, icon: String?, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                if let icon = icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 12))
-                }
-                Text(title)
-                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-            }
-            .foregroundStyle(isSelected ? .white : Color(hex: "#4B5563"))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(isSelected ? Color(hex: "#3A6CFF") : Color.white)
-            .clipShape(Capsule())
-            .shadow(color: isSelected ? Color(hex: "#3A6CFF").opacity(0.2) : Color.black.opacity(0.02), radius: 3, x: 0, y: 1)
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Transactions Section
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
+                Text("Daftar Transaksi")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color(hex: "#111827"))
 
                 Spacer()
 
                 Text("\(filteredExpenses.count) ditemukan")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 13))
                     .foregroundStyle(Color(hex: "#6B7280"))
             }
 
             if filteredExpenses.isEmpty {
                 emptyState
             } else {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: 10) {
                     ForEach(filteredExpenses) { expense in
                         transactionCard(for: expense)
                     }
@@ -722,30 +673,56 @@ struct HistoryView: View {
 
             Spacer()
 
-            // Amount & Delete action
+            // Amount & Delete action / Split Bill detail button
             VStack(alignment: .trailing, spacing: 6) {
                 Text(formatRp(expense.amount))
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Color(hex: "#111827"))
 
-                Button(action: {
-                    expenseToDelete = expense
-                    showDeleteConfirmation = true
-                }) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color(hex: "#EF4444"))
-                        .padding(6)
-                        .background(Color(hex: "#FEE2E2"))
-                        .clipShape(Circle())
+                HStack(spacing: 6) {
+                    if expense.splitSessionId != nil {
+                        Button(action: {
+                            if let sessionId = expense.splitSessionId,
+                               let session = expenseStore.splitSessions.first(where: { $0.id == sessionId }) {
+                                selectedSplitSession = session
+                            }
+                        }) {
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.system(size: 13))
+                                .foregroundStyle(BagiTheme.primary)
+                                .padding(6)
+                                .background(BagiTheme.primary.opacity(0.1))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button(action: {
+                        expenseToDelete = expense
+                        showDeleteConfirmation = true
+                    }) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color(hex: "#EF4444"))
+                            .padding(6)
+                            .background(Color(hex: "#FEE2E2"))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(14)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let sessionId = expense.splitSessionId,
+               let session = expenseStore.splitSessions.first(where: { $0.id == sessionId }) {
+                selectedSplitSession = session
+            }
+        }
     }
 
     // MARK: - Empty State
@@ -759,17 +736,15 @@ struct HistoryView: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Color(hex: "#111827"))
 
-            Text("Belum ada pengeluaran pada periode atau kata kunci filter ini.")
+            Text("Sesuaikan filter atau catat transaksi baru")
                 .font(.system(size: 13))
                 .foregroundStyle(Color(hex: "#6B7280"))
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 36)
-        .padding(.horizontal, 20)
+        .padding(.vertical, 32)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
+        .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
     }
 }
 

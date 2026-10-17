@@ -45,12 +45,14 @@ enum ExpenseInputMethod: String, Codable {
     case manual = "Manual"
     case voice = "Suara"
     case receiptScanner = "Scan Struk"
+    case splitBill = "Split Bill"
 
     var icon: String {
         switch self {
         case .manual: return "square.and.pencil"
         case .voice: return "mic.fill"
         case .receiptScanner: return "camera.viewfinder"
+        case .splitBill: return "person.2.fill"
         }
     }
 }
@@ -63,6 +65,7 @@ struct Expense: Identifiable, Codable, Equatable {
     var date: Date
     var note: String
     var inputMethod: ExpenseInputMethod
+    var splitSessionId: UUID? = nil
 
     init(
         id: UUID = UUID(),
@@ -71,7 +74,8 @@ struct Expense: Identifiable, Codable, Equatable {
         category: ExpenseCategory,
         date: Date = Date(),
         note: String = "",
-        inputMethod: ExpenseInputMethod = .manual
+        inputMethod: ExpenseInputMethod = .manual,
+        splitSessionId: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -80,6 +84,35 @@ struct Expense: Identifiable, Codable, Equatable {
         self.date = date
         self.note = note
         self.inputMethod = inputMethod
+        self.splitSessionId = splitSessionId
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, amount, category, date, note, inputMethod, splitSessionId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.title = try container.decode(String.self, forKey: .title)
+        self.amount = try container.decode(Double.self, forKey: .amount)
+        self.category = try container.decode(ExpenseCategory.self, forKey: .category)
+        self.date = try container.decode(Date.self, forKey: .date)
+        self.note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+        self.inputMethod = try container.decodeIfPresent(ExpenseInputMethod.self, forKey: .inputMethod) ?? .manual
+        self.splitSessionId = try container.decodeIfPresent(UUID.self, forKey: .splitSessionId)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(amount, forKey: .amount)
+        try container.encode(category, forKey: .category)
+        try container.encode(date, forKey: .date)
+        try container.encode(note, forKey: .note)
+        try container.encode(inputMethod, forKey: .inputMethod)
+        try container.encodeIfPresent(splitSessionId, forKey: .splitSessionId)
     }
 }
 

@@ -159,7 +159,7 @@ struct ProfileView: View {
                     Button(role: .destructive) {
                         showingResetAlert = true
                     } label: {
-                        Label("Reset Data Demo", systemImage: "arrow.counterclockwise")
+                        Label("Hapus Semua Data", systemImage: "trash")
                     }
                 } header: {
                     Text("Preferensi & Data")
@@ -197,14 +197,14 @@ struct ProfileView: View {
                     .foregroundStyle(BagiTheme.primary)
                 }
             }
-            .alert("Reset Data Demo?", isPresented: $showingResetAlert) {
+            .alert("Hapus Semua Data?", isPresented: $showingResetAlert) {
                 Button("Batal", role: .cancel) {}
-                Button("Reset", role: .destructive) {
-                    expenseStore.resetToDemoData()
+                Button("Hapus", role: .destructive) {
+                    expenseStore.clearAllData()
                     dismiss()
                 }
             } message: {
-                Text("Semua riwayat transaksi akan dikembalikan ke data awal demo.")
+                Text("Semua riwayat transaksi dan catatan split bill akan dihapus secara permanen.")
             }
             .onAppear {
                 manualBudgetText = String(Int(expenseStore.dailyBudgetLimit))
