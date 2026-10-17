@@ -38,12 +38,14 @@ struct CategoryChartDataPoint: Identifiable {
 
 struct HistoryView: View {
     @ObservedObject var expenseStore: ExpenseStore
+    var onShowOnboarding: (() -> Void)? = nil
 
     @State private var searchText: String = ""
     @State private var selectedCategory: ExpenseCategory? = nil
     @State private var selectedPeriod: HistoryPeriod = .thisMonth
     @State private var selectedChartType: ChartType = .timeTrend
     @State private var showAddSheet: Bool = false
+    @State private var showProfileSheet: Bool = false
     @State private var expenseToDelete: Expense? = nil
     @State private var showDeleteConfirmation: Bool = false
 
@@ -236,21 +238,28 @@ struct HistoryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { showAddSheet = true }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 13, weight: .bold))
-                            Text("Catat")
-                                .font(.system(size: 14, weight: .bold))
+                    Button(action: { showProfileSheet = true }) {
+                        ZStack {
+                            Circle()
+                                .fill(Color(hex: "#3A6CFF").opacity(0.12))
+                                .frame(width: 36, height: 36)
+
+                            if let firstChar = expenseStore.userName.first {
+                                Text(String(firstChar).uppercased())
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(Color(hex: "#3A6CFF"))
+                            } else {
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(Color(hex: "#3A6CFF"))
+                            }
                         }
-                        .foregroundStyle(Color(hex: "#3A6CFF"))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color(hex: "#3A6CFF").opacity(0.1))
-                        .clipShape(Capsule())
                     }
-                    .accessibilityLabel("Catat Pengeluaran")
+                    .accessibilityLabel("Profil Pengguna")
                 }
+            }
+            .sheet(isPresented: $showProfileSheet) {
+                ProfileView(expenseStore: expenseStore, onShowOnboarding: onShowOnboarding)
             }
             .sheet(isPresented: $showAddSheet) {
                 AddExpenseSheet(expenseStore: expenseStore)

@@ -39,17 +39,31 @@ struct ContentView: View {
                     }
                     .tag(AppTab.home)
 
-                    HistoryView(expenseStore: expenseStore)
-                        .tabItem {
-                            Label("Riwayat", systemImage: "clock.arrow.circlepath")
+                    HistoryView(
+                        expenseStore: expenseStore,
+                        onShowOnboarding: {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                hasCompletedOnboarding = false
+                            }
                         }
-                        .tag(AppTab.history)
+                    )
+                    .tabItem {
+                        Label("Riwayat", systemImage: "clock.arrow.circlepath")
+                    }
+                    .tag(AppTab.history)
 
-                    AnalyticsView(expenseStore: expenseStore)
-                        .tabItem {
-                            Label("Tips Hemat", systemImage: "chart.pie.fill")
+                    AnalyticsView(
+                        expenseStore: expenseStore,
+                        onShowOnboarding: {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                hasCompletedOnboarding = false
+                            }
                         }
-                        .tag(AppTab.analytics)
+                    )
+                    .tabItem {
+                        Label("Tips Hemat", systemImage: "chart.pie.fill")
+                    }
+                    .tag(AppTab.analytics)
                 }
                 .tint(BagiTheme.primary)
             }
