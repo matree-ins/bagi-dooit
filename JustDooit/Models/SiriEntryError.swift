@@ -1,5 +1,6 @@
 import Foundation
 
+// Spoken by Siri, which runs in English because Siri does not support Indonesian.
 enum SiriEntryError: LocalizedError {
     case invalidAmount
     case invalidTitle
@@ -12,19 +13,19 @@ enum SiriEntryError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidAmount:
-            return "Sebutkan nominal rupiah utuh di atas nol, maksimal satu miliar rupiah."
+            return "Say a whole rupiah amount above zero, up to one billion."
         case .invalidTitle:
-            return "Sebutkan nama tagihan atau keterangan dengan satu sampai 120 karakter."
+            return "Say a bill name between one and 120 characters."
         case .invalidParticipants:
-            return "Sebutkan satu sampai sembilan nama teman yang berbeda, pisahkan dengan koma atau kata dan. Kamu otomatis ikut sebagai Saya."
+            return "Say one to nine different friend names, separated by and. You are included automatically."
         case .invalidItems:
-            return "Sebutkan setiap item dengan format nama, jumlah, harga satuan. Contoh: nasi goreng jumlah dua harga satuan dua puluh lima ribu. Pisahkan item dengan kata lalu. Gunakan nama item berbeda."
+            return "I couldn't read the items. Say each item with quantity and unit price, for example: fried rice quantity two unit price twenty five thousand, then iced tea quantity three unit price five thousand. Use different item names."
         case .invalidCharges:
-            return "Sebutkan nama biaya dan nominal atau persen. Contoh: pajak sepuluh persen lalu ongkir dua belas ribu. Katakan tidak ada jika tanpa tambahan. Diskon tidak boleh melebihi subtotal."
+            return "I couldn't read the extras. For example: tax ten percent, then delivery twelve thousand. Say none if there are no extras. A discount cannot exceed the subtotal."
         case .invalidAssignments:
-            return "Sebutkan setiap item untuk siapa. Contoh: nasi goreng untuk Budi satu dan Siti satu. Jumlahnya harus sesuai pesanan. Untuk berbagi satu item, sebutkan nama tanpa jumlah."
+            return "I couldn't match the items to people. Say each item once, for example: fried rice for Budi one and Siti one, then iced tea for me one and Budi one and Siti one. The numbers must add up to each item's quantity."
         case .invalidBill:
-            return "Tagihan belum dapat disimpan. Periksa peserta dan nominal, lalu coba lagi."
+            return "The bill can't be saved yet. Check the people and amounts, then try again."
         }
     }
 }

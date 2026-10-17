@@ -57,6 +57,41 @@ enum SiriRegressionChecks {
         let englishAllocations = try SiriBillParser.assignments("fried rice for Budi one and Siti one then iced tea for me one and Budi one and Siti one", items: englishItems, participants: englishPeople)
         let englishDraft = try SiriSplitBillDraft(title: "Lunch", items: englishItems, charges: englishCharges, participants: englishPeople, assignedItems: englishAllocations)
         check(englishDraft.session.total == 83500 && englishCharges.charges.count == 2, "English Siri answers produce the same split bill flow")
+        for transcript in ["Fried rice quantity 2 unit price 25,000, then iced tea quantity 3 unit price 5,000.",
+                           "Fried rice quantity two unit price $25,000. Then iced tea quantity three unit price $5000.",
+                           "Fried rice, quantity 2, unit price 25,000 rupiah. Then iced tea, quantity 3, unit price 5,000 rupiah."] {
+            let parsed = try? SiriBillParser.items(transcript)
+            check(parsed?.map(\.name) == ["Fried rice", "iced tea"] && parsed?.map(\.total) == [50000, 15000], "Siri-style item transcript is parsed: \(transcript)")
+        }
+        let dictatedItems = try SiriBillParser.items("Fried rice quantity 2 unit price 25,000, then iced tea quantity 3 unit price 5,000.")
+        let dictatedPeople = try SiriEntryValidator.participants("Budi and Siti.")
+        check(dictatedPeople.map(\.name) == ["Saya", "Budi", "Siti"], "Dictated names drop the trailing period")
+        let dictatedCharges = try SiriBillParser.charges("Tax 10%, then delivery $12,000.", subtotal: 65000)
+        let dictatedNone = try SiriBillParser.charges("None.", subtotal: 65000)
+        check(dictatedCharges.charges.count == 2 && dictatedNone.charges.isEmpty, "Dictated extras and None. are parsed")
+        let dictatedAllocations = try SiriBillParser.assignments("Fried rice for Budi 1 and Siti 1, then iced tea for me 1, Budi 1 and Siti 1.", items: dictatedItems, participants: dictatedPeople)
+        let dictatedDraft = try SiriSplitBillDraft(title: "Lunch.", items: dictatedItems, charges: dictatedCharges, participants: dictatedPeople, assignedItems: dictatedAllocations)
+        check(dictatedDraft.session.title == "Lunch" && dictatedDraft.session.total == 83500, "A fully dictated Siri conversation produces the expected bill")
+        check(try SiriBillParser.items("kopi 2 x Rp. 25.000").first?.total == 50000, "Indonesian Rp. abbreviation and dotted thousands still work")
+        let modelItems = try SiriBillParser.items(SiriBillParser.itemText([("Fried rice", 2, 25000), ("Iced tea; extra", 3, 5000)]))
+        check(modelItems.map(\.total) == [50000, 15000] && modelItems[1].name == "Iced tea  extra", "Model-extracted items pass the strict parser and cannot inject separators")
+        check(rejects { _ = try SiriBillParser.items(SiriBillParser.itemText([("Kopi", 0, 5000)])) }, "Model-extracted zero quantity is still rejected")
+        check(rejects { _ = try SiriBillParser.items(SiriBillParser.itemText([])) }, "Model returning no items is rejected")
+        let modelCharges = try SiriBillParser.charges(SiriBillParser.chargeText([("tax", 2.5, true), ("delivery", 12000, false), ("discount", 5000, false)]), subtotal: 65000)
+        check(modelCharges.charges.count == 2 && modelCharges.discount == 5000, "Model-extracted fees and discount pass the strict parser")
+        check(try SiriBillParser.charges(SiriBillParser.chargeText([]), subtotal: 65000).charges.isEmpty, "Model returning no fees means none")
+        for bad in [("tax", 150.0, true), ("delivery", 12000.5, false), ("delivery", Double.nan, false), ("delivery", -1, false)] {
+            check(rejects { _ = try SiriBillParser.charges(SiriBillParser.chargeText([bad]), subtotal: 65000) }, "Invalid model fee is rejected: \(bad)")
+        }
+        let modelAllocations = try SiriBillParser.assignments(SiriBillParser.assignmentText([
+            (item: "nasi goreng", shares: [(person: "Budi", portions: 1), (person: "Siti", portions: 1)]),
+            (item: "es teh", shares: [(person: "Saya", portions: 0), (person: "Budi", portions: 0), (person: "Siti", portions: 0)])
+        ]), items: items, participants: people)
+        check(modelAllocations.count == 3 && modelAllocations.reduce(0) { $0 + $1.totalPrice } == 65000, "Model-extracted portions and equal sharing pass the strict parser")
+        check(rejects { _ = try SiriBillParser.assignments(SiriBillParser.assignmentText([
+            (item: "nasi goreng", shares: [(person: "Budi", portions: 5)]),
+            (item: "es teh", shares: [(person: "OrangAsing", portions: 0)])
+        ]), items: items, participants: people) }, "Model-invented people or wrong portions are rejected")
         let largeItem = try SiriBillParser.items("pizza jumlah sepuluh harga satuan seribu")
         let largeAllocation = try SiriBillParser.assignments("pizza untuk Budi sepuluh", items: largeItem, participants: people)
         check(largeAllocation.first?.quantity == 10, "Spoken quantities above nine work in allocations")

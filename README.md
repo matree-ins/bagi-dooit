@@ -78,6 +78,22 @@ Tagihan langsung muncul di daftar split bill aplikasi.
 
 Kata kunci English yang dikenali parser: `quantity`, `unit price`, `then`, `for`, `and`, `me`, `percent`, `discount`, `none`.
 
+### Kalimat bebas (Apple Intelligence)
+
+Kalau jawaban tidak cocok dengan format di atas dan iPhone mendukung Apple Intelligence, model bahasa on-device (Foundation Models) mencoba membaca kalimat bebas. Hasil model ditulis ulang ke format baku lalu divalidasi parser yang sama, dan Siri tetap membacakan ringkasan untuk dikonfirmasi sebelum menyimpan.
+
+| Bagian | Contoh kalimat bebas yang sudah dicoba |
+| --- | --- |
+| Item | `two fried rice at twenty five thousand each and three iced teas for 5k each` |
+| Tambahan | `ten percent tax and the delivery was twelve k`, `service 5% plus admin three thousand, and a 10k discount` |
+| Pembagian | `the fried rice was for Budi and me, everyone gets one iced tea` |
+
+Batasan:
+
+- Pembagian bebas paling rapuh. Kalimat seperti `we all shared the iced tea` sering ditolak, jadi untuk pembagian lebih aman pakai format `item for nama jumlah`.
+- Tanpa Apple Intelligence (atau model belum siap), hanya format baku yang diterima.
+- Dengarkan ringkasan konfirmasi. Model bisa salah membaca, dan konfirmasi adalah pengaman terakhir sebelum data tersimpan.
+
 ### Format item
 
 Pisahkan beberapa item dengan kata **lalu** (atau `kemudian` / `then`), titik koma, atau baris baru.
@@ -170,6 +186,8 @@ Siri / Shortcuts
 | `JustDooit/Intents/BagiDooitShortcuts.swift` | Daftar frasa App Shortcut |
 | `JustDooit/Intents/RecordExpenseIntent.swift` | Catat pengeluaran pribadi lewat Siri |
 | `JustDooit/Services/SiriBillParser.swift` | Parse item, biaya, dan pembagian |
+| `JustDooit/Services/SiriBillReader.swift` | Format baku dulu; kalau gagal, Foundation Models membaca kalimat bebas |
+| `JustDooit/Models/Generated*.swift` | Struktur `@Generable` untuk output model (item, biaya, pembagian) |
 | `JustDooit/Services/SiriSpokenNumber.swift` | Angka lisan / format rupiah terkontrol |
 | `JustDooit/Services/SiriEntryValidator.swift` | Validasi judul, nominal, daftar nama |
 | `JustDooit/Services/SiriRecordingService.swift` | Konfirmasi dulu, baru tulis ke store |

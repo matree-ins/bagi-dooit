@@ -22,6 +22,14 @@ xcrun swiftc -parse-as-library -swift-version 5 -default-isolation MainActor \
   "$project_root/JustDooit/Services/SiriSpokenNumber.swift" \
   "$project_root/JustDooit/Services/SiriBillParser.swift" \
   "$project_root/JustDooit/Services/SiriEntryValidator.swift" \
+  "$project_root/JustDooit/Models/GeneratedBillItem.swift" \
+  "$project_root/JustDooit/Models/GeneratedBillItems.swift" \
+  "$project_root/JustDooit/Models/GeneratedBillCharge.swift" \
+  "$project_root/JustDooit/Models/GeneratedBillCharges.swift" \
+  "$project_root/JustDooit/Models/GeneratedItemShare.swift" \
+  "$project_root/JustDooit/Models/GeneratedItemAssignment.swift" \
+  "$project_root/JustDooit/Models/GeneratedItemAssignments.swift" \
+  "$project_root/JustDooit/Services/SiriBillReader.swift" \
   "$project_root/JustDooit/Models/SiriSplitBillDraft.swift" \
   "$project_root/JustDooit/Services/SiriRecordingService.swift" \
   "$project_root/JustDooit/Models/SavingsErrorNotice.swift" \

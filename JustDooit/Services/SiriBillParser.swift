@@ -4,19 +4,31 @@ enum SiriBillParser {
     private static let unitSuffix = try! Regex(#"\s+(?:porsi|gelas|buah|pcs|unit|portions?)$"#).ignoresCase()
     private static let percentSuffix = try! Regex(#"\s*(?:%|persen|percent)$"#).ignoresCase()
     private static let forSeparator = try! Regex(#"\s+(?:untuk|for)\s+"#).ignoresCase()
-    private static let nameListSeparator = try! Regex(#"\s+(?:dan|and)\s+|[;&]"#).ignoresCase()
+    private static let nameListSeparator = try! Regex(#"\s+(?:dan|and)\s+|[,;&]"#).ignoresCase()
     private static let decimalPercent = try! Regex(#"^[0-9]+[.,][0-9]{1,2}$"#)
+    private static let rupiahAbbreviation = try! Regex(#"\brp\.\s*"#).ignoresCase()
+    private static let keywordComma = try! Regex(#",\s*(?=(?:quantity|jumlah|unit price|harga|untuk|for|rupiah)\b)"#).ignoresCase()
+    private static let sentenceEnd = try! Regex(#"[.!?]+(?=\s|$)"#)
+    private static let leadingConnector = try! Regex(#"^(?:then|lalu|kemudian)\s+"#).ignoresCase()
+    private static let grammarDelimiter = try! Regex(#"[;:,\n$]"#)
 
     static func key(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "id_ID"))
             .split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
+    /// Siri dictation writes "$25,000.", commas between clauses, and sentence breaks instead of spoken words.
     static func rows(_ text: String, commas: Bool = false) -> [String] {
         let pattern = commas ? #"[;\n]|\s+(?:lalu|kemudian|then)\s+|,\s*(?=\p{L})"# : #"[;\n]|\s+(?:lalu|kemudian|then)\s+"#
         guard let regex = try? Regex(pattern).ignoresCase() else { return [text] }
-        return text.replacing(regex, with: ";")
-            .components(separatedBy: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let dictation = text.replacing("$", with: "")
+            .replacing(rupiahAbbreviation, with: "rp ")
+            .replacing(keywordComma, with: " ")
+            .replacing(sentenceEnd, with: ";")
+        return dictation.replacing(regex, with: ";")
+            .components(separatedBy: ";")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: ","))).replacing(leadingConnector, with: "") }
+            .filter { !$0.isEmpty }
     }
 
     static func items(_ text: String) throws -> [SiriReceiptItem] {
@@ -39,8 +51,8 @@ enum SiriBillParser {
     }
 
     static func charges(_ text: String, subtotal: Double) throws -> SiriBillCharges {
-        let input = key(text)
-        if ["tidak ada", "tanpa tambahan", "none", "no extras", "nol", "zero", "0"].contains(input) { return SiriBillCharges() }
+        let input = key(SiriEntryValidator.withoutTrailingPunctuation(text))
+        if ["tidak ada", "tanpa tambahan", "none", "no extras", "no", "nothing", "nol", "zero", "0"].contains(input) { return SiriBillCharges() }
         guard text.count <= 2_000 else { throw SiriEntryError.invalidCharges }
         let entries = rows(text, commas: true)
         guard (1...10).contains(entries.count) else { throw SiriEntryError.invalidCharges }
@@ -128,6 +140,36 @@ enum SiriBillParser {
             }
         }
         return result
+    }
+
+    // Model output is rewritten in the strict grammar so it passes exactly the same validation as spoken input.
+    // ponytail: names that themselves contain "quantity" or "for" are rejected on re-parse; quote names if that shows up.
+    static func itemText(_ items: [(name: String, quantity: Int, unitPrice: Int)]) -> String {
+        items.map { "\(grammarSafe($0.name)) quantity \($0.quantity) unit price \($0.unitPrice)" }
+            .joined(separator: "; ")
+    }
+
+    static func chargeText(_ charges: [(name: String, value: Double, isPercentage: Bool)]) -> String {
+        guard !charges.isEmpty else { return "none" }
+        return charges.map { "\(grammarSafe($0.name)) \(grammarNumber($0.value, isPercentage: $0.isPercentage))" }
+            .joined(separator: "; ")
+    }
+
+    static func assignmentText(_ rows: [(item: String, shares: [(person: String, portions: Int)])]) -> String {
+        rows.map { row in
+            let receivers = row.shares.map { $0.portions > 0 ? "\(grammarSafe($0.person)) \($0.portions)" : grammarSafe($0.person) }
+            return "\(grammarSafe(row.item)) for \(receivers.joined(separator: " and "))"
+        }.joined(separator: "; ")
+    }
+
+    private static func grammarSafe(_ text: String) -> String {
+        text.replacing(grammarDelimiter, with: " ").trimmingCharacters(in: .whitespaces)
+    }
+
+    private static func grammarNumber(_ value: Double, isPercentage: Bool) -> String {
+        guard value.isFinite, value >= 0, value <= 1_000_000_000 else { return "invalid" }
+        if value.rounded() == value { return isPercentage ? "\(Int(value)) percent" : "\(Int(value))" }
+        return isPercentage ? "\(value) percent" : "invalid"
     }
 
     private static func captures(_ pattern: String, in text: String) -> [String]? {

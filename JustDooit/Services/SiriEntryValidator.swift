@@ -11,8 +11,13 @@ enum SiriEntryValidator {
         return Int(value)
     }
 
+    /// Siri dictation ends answers with "." even when the answer is a single name.
+    static func withoutTrailingPunctuation(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: ".!?")))
+    }
+
     static func title(_ value: String) throws -> String {
-        let clean = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clean = withoutTrailingPunctuation(value)
         guard !clean.isEmpty, clean.count <= 120,
               !clean.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
             throw SiriEntryError.invalidTitle
@@ -23,7 +28,7 @@ enum SiriEntryValidator {
     /// Names are manual participants, never guessed contacts. The owner always appears once.
     static func participants(_ value: String) throws -> [SplitParticipant] {
         guard value.count <= 1_000 else { throw SiriEntryError.invalidParticipants }
-        let separated = value
+        let separated = withoutTrailingPunctuation(value)
             .replacing(andAfterPunctuation, with: ",")
             .replacing(andSeparator, with: ",")
             .replacing(listPunctuation, with: ",")
