@@ -13,6 +13,27 @@
 			</array>
 		</dict>
 	</array>
+	<key>INAlternativeAppNames</key>
+	<array>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>JustDooit</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>just do it</string>
+		</dict>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>BagiDooit</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>bagi do it</string>
+			<key>INPreferredForAppShortcuts</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Bagi Doit</string>
+		</dict>
+	</array>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>whatsapp</string>

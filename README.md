@@ -28,15 +28,23 @@ Shortcut utama untuk mencatat split bill tanpa membuka form manual.
 
 ### Cara memicu
 
-Ucapkan salah satu (nama app ikut otomatis):
+**Wajib:** install/run app sekali di device supaya Siri mendaftarkan shortcut. Kalau Siri “ngarang” jawaban tanpa menanyakan item/teman, berarti intent app **belum** terpicu.
 
-- “Buat split bill di **Bagi Dooit**”
-- “Bagi tagihan di **Bagi Dooit**”
-- “Catat split bill di **Bagi Dooit**”
-- “Create a split bill in **Bagi Dooit**”
-- “Split a bill with **Bagi Dooit**”
+Ucapkan **persis** salah satu (sebut nama app):
 
-Atau jalankan aksi **Buat Split Bill** dari app Shortcuts.
+- “Hey Siri, **buat split bill di Bagi Dooit**”
+- “Hey Siri, **catat split bill ke Bagi Dooit**”
+- “Hey Siri, **bagi tagihan di Bagi Dooit**”
+- “Hey Siri, **Bagi Dooit buat split bill**”
+- English: “Create a split bill in Bagi Dooit”
+
+Nama lain yang dikenali: **JustDooit**, **BagiDooit**, **Bagi Doit**.
+
+**Kalau masih halu:**
+1. Buka app Bagi Dooit sekali (shortcut di-donate ulang saat launch).
+2. Buka app **Shortcuts** → cari **Buat Split Bill** / Bagi Dooit → jalankan manual, atau Add to Siri.
+3. Settings → Siri → pastikan bahasa cocok; coba frasa English di atas.
+4. Jangan bilang hanya “catat split bill” tanpa nama app — Siri akan jawab generatif, bukan masuk ke Bagi Dooit.
 
 ### Alur yang diminta Siri
 

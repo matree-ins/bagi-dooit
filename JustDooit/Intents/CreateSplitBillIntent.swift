@@ -3,9 +3,15 @@ import Foundation
 
 struct CreateSplitBillIntent: AppIntent {
     static let title: LocalizedStringResource = "Buat Split Bill"
-    static let description = IntentDescription("Catat item, jumlah, harga satuan, tambahan, dan pembagian ke nama teman lewat Siri. Konfirmasi lalu langsung simpan ke aplikasi.")
-    static let supportedModes: IntentModes = .background
+    static let description = IntentDescription(
+        "Catat split bill ke Bagi Dooit: item, jumlah, harga satuan, pajak/ongkir, nama teman, dan pembagian. Konfirmasi lalu langsung simpan di aplikasi.",
+        categoryName: "Split Bill",
+        searchKeywords: ["split bill", "bagi tagihan", "patungan", "tagihan", "bill"]
+    )
+    static let supportedModes: IntentModes = [.background, .foreground(.dynamic)]
     static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
+    static let isDiscoverable = true
+    static let openAppWhenRun = false
 
     @Parameter(title: "Nama tagihan", requestValueDialog: "Apa nama tagihannya?")
     var billTitle: String
