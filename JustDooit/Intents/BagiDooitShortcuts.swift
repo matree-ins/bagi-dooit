@@ -17,7 +17,7 @@ struct BagiDooitShortcuts: AppShortcutsProvider {
                 "Buat split bill di \(.applicationName)",
                 "Catat split bill di \(.applicationName)"
             ],
-            shortTitle: "Buat Split Bill",
+            shortTitle: LocalizedStringResource("Buat Split Bill", table: "Localizable"),
             systemImageName: "person.2.fill"
         )
         AppShortcut(
@@ -26,7 +26,7 @@ struct BagiDooitShortcuts: AppShortcutsProvider {
                 "Scan a receipt in \(.applicationName)",
                 "Foto struk di \(.applicationName)"
             ],
-            shortTitle: "Foto Struk",
+            shortTitle: LocalizedStringResource("Foto Struk", table: "Localizable"),
             systemImageName: "camera.viewfinder"
         )
         AppShortcut(
@@ -35,7 +35,7 @@ struct BagiDooitShortcuts: AppShortcutsProvider {
                 "Open voice input in \(.applicationName)",
                 "Buka input suara di \(.applicationName)"
             ],
-            shortTitle: "Buka Input Suara",
+            shortTitle: LocalizedStringResource("Buka Input Suara", table: "Localizable"),
             systemImageName: "mic.fill"
         )
         AppShortcut(
@@ -45,7 +45,7 @@ struct BagiDooitShortcuts: AppShortcutsProvider {
                 "Add an expense in \(.applicationName)",
                 "Catat pengeluaran di \(.applicationName)"
             ],
-            shortTitle: "Catat Pengeluaran",
+            shortTitle: LocalizedStringResource("Catat Pengeluaran", table: "Localizable"),
             systemImageName: "square.and.pencil"
         )
     }
