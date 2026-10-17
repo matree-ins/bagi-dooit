@@ -11,50 +11,104 @@ struct DashboardView: View {
     var onShowOnboarding: (() -> Void)? = nil
 
     @State private var showAddSheet: Bool = false
-    @State private var showSplitBillSheet: Bool = false
     @State private var showProfileSheet: Bool = false
+    @State private var selectedSplitSession: SplitBillSession? = nil
 
-    private var recentExpenses: [Expense] {
-        Array(expenseStore.expenses.prefix(5))
+    private func formatRp(_ amount: Double) -> String {
+        CurrencyFormatter.format(amount).replacingOccurrences(of: " ", with: "")
+    }
+
+    private var unpaidTotalAmount: Double {
+        var total: Double = 0
+        for session in expenseStore.splitSessions {
+            for p in session.participants where p.name != "Saya" && !p.isPaid {
+                total += session.participantTotal(for: p.id)
+            }
+        }
+        return total
+    }
+
+    private var activePendingSession: SplitBillSession? {
+        expenseStore.splitSessions.first { session in
+            session.participants.contains { $0.name != "Saya" && !$0.isPaid }
+        }
+    }
+
+    private var pendingSubtitle: String {
+        if let session = activePendingSession {
+            let unpaidCount = session.participants.filter { $0.name != "Saya" && !$0.isPaid }.count
+            let title = session.title.isEmpty ? "Makan Bareng" : session.title
+            return "\(title) • \(unpaidCount) orang belum bayar"
+        } else if let latest = expenseStore.splitSessions.first {
+            let title = latest.title.isEmpty ? "Makan Bareng" : latest.title
+            return "\(title) • Semua sudah lunas"
+        } else {
+            return "Semua tagihan sudah beres"
+        }
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Hari ini"
+        } else if calendar.isDateInYesterday(date) {
+            return "Kemarin"
+        } else {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "id_ID")
+            formatter.dateFormat = "d MMM"
+            return formatter.string(from: date)
+        }
+    }
+
+    private func participantNamesSummary(for session: SplitBillSession) -> String {
+        let names = session.participants.map { $0.name }
+        if names.isEmpty { return "Tanpa peserta" }
+        return names.joined(separator: ", ")
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Quick Summary Header
-                    headerSummaryCards
+            ZStack {
+                Color(hex: "#F7F8FB")
+                    .ignoresSafeArea()
 
-                    // Quick Action Buttons (Horizontal Side-by-Side)
-                    quickActionButtons
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // MARK: - Greeting Header ("Halo, Rina. / Mau bagi tagihan apa hari ini?")
+                        headerGreetingView
+                            .padding(.top, 8)
 
-                    // Financial Health Behavior Card
-                    FinancialBehaviorCard(expenseStore: expenseStore)
+                        // MARK: - Card "Belum selesai" (Blue Card)
+                        unpaidCardView
 
-                    // Recent Expenses Section
-                    recentExpensesSection
+                        // MARK: - Button "+ Buat Tagihan"
+                        createBillButton
+
+                        // MARK: - Section "Tagihan terbaru"
+                        recentSplitBillsSection
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 36)
                 }
-                .padding()
-                .padding(.bottom, 30)
             }
-            .bagiScreen()
-            .navigationTitle("Bagi Dooit")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { showProfileSheet = true }) {
                         ZStack {
                             Circle()
-                                .fill(BagiTheme.primary.opacity(0.12))
+                                .fill(Color(hex: "#3A6CFF").opacity(0.12))
                                 .frame(width: 36, height: 36)
 
                             if let firstChar = expenseStore.userName.first {
                                 Text(String(firstChar).uppercased())
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(BagiTheme.primary)
+                                    .foregroundStyle(Color(hex: "#3A6CFF"))
                             } else {
                                 Image(systemName: "person.fill")
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(BagiTheme.primary)
+                                    .foregroundStyle(Color(hex: "#3A6CFF"))
                             }
                         }
                     }
@@ -64,8 +118,10 @@ struct DashboardView: View {
             .sheet(isPresented: $showAddSheet) {
                 AddExpenseSheet(expenseStore: expenseStore)
             }
-            .sheet(isPresented: $showSplitBillSheet) {
-                SplitBillView()
+            .sheet(item: $selectedSplitSession) { session in
+                NavigationStack {
+                    SplitBillView(expenseStore: expenseStore, initialSession: session, isDetailMode: true)
+                }
             }
             .sheet(isPresented: $showProfileSheet) {
                 ProfileView(expenseStore: expenseStore, onShowOnboarding: onShowOnboarding)
@@ -73,102 +129,124 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Header Summary Cards
-    private var headerSummaryCards: some View {
-        ExpenseSummaryCard(today: expenseStore.totalExpensesToday, total: expenseStore.totalExpensesAllTime)
-    }
+    // MARK: - Header Greeting View
+    private var headerGreetingView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Halo, \(expenseStore.userName).")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(Color(hex: "#111827"))
 
-    // MARK: - Quick Action Buttons
-    private var quickActionButtons: some View {
-        HStack(spacing: 12) {
-            // Primary Button (Left): Catat Pengeluaran
-            Button(action: { showAddSheet = true }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .bold))
-                    Text("Catat Pengeluaran")
-                        .font(.system(size: 14, weight: .semibold))
-                        .lineLimit(1)
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(BagiTheme.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .shadow(color: BagiTheme.primary.opacity(0.2), radius: 5, x: 0, y: 2)
-            }
-            .buttonStyle(.plain)
-
-            // Secondary Button (Right): Split Bill
-            Button(action: { showSplitBillSheet = true }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text("Split Bill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .lineLimit(1)
-                }
-                .foregroundStyle(BagiTheme.primary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(BagiTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(BagiTheme.primary.opacity(0.3), lineWidth: 1.5)
-                )
-            }
-            .buttonStyle(.plain)
+            Text("Mau bagi tagihan apa hari ini?")
+                .font(.system(size: 15))
+                .foregroundStyle(Color(hex: "#6B7280"))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: - Recent Expenses Section
-    private var recentExpensesSection: some View {
+    // MARK: - Card "Belum selesai" (Blue Card)
+    private var unpaidCardView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Transaksi Terbaru")
-                    .font(.headline)
-                Spacer()
-                if !expenseStore.expenses.isEmpty {
-                    Button("Lihat Semua") {
-                        onNavigateToHistory?()
-                    }
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(BagiTheme.primary)
-                }
-            }
+            Text("Belum selesai")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.85))
 
-            if recentExpenses.isEmpty {
-                emptyRecentView
+            Text(unpaidTotalAmount > 0 ? formatRp(unpaidTotalAmount) : "Rp0")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundStyle(.white)
+
+            Text(pendingSubtitle)
+                .font(.system(size: 14))
+                .foregroundStyle(Color.white.opacity(0.9))
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(hex: "#3A6CFF"))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: Color(hex: "#3A6CFF").opacity(0.22), radius: 10, x: 0, y: 5)
+    }
+
+    // MARK: - Button "+ Buat Tagihan"
+    private var createBillButton: some View {
+        Button(action: { showAddSheet = true }) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .bold))
+                Text("Buat Tagihan")
+                    .font(.system(size: 16, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(Color(hex: "#3A6CFF"))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(color: Color(hex: "#3A6CFF").opacity(0.25), radius: 8, x: 0, y: 4)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Section "Tagihan terbaru"
+    private var recentSplitBillsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Tagihan terbaru")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Color(hex: "#111827"))
+
+            if expenseStore.splitSessions.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 36))
+                        .foregroundStyle(Color(hex: "#9CA3AF"))
+                    Text("Belum ada tagihan terbaru")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color(hex: "#6B7280"))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
             } else {
-                LazyVStack(spacing: 10) {
-                    ForEach(recentExpenses) { expense in
-                        ExpenseRowView(expense: expense) {
-                            expenseStore.deleteExpense(id: expense.id)
+                VStack(spacing: 12) {
+                    ForEach(expenseStore.splitSessions) { session in
+                        Button(action: {
+                            selectedSplitSession = session
+                        }) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(alignment: .top) {
+                                    Text(session.title.isEmpty ? "Makan Bareng" : session.title)
+                                        .font(.system(size: 16, weight: .bold))
+                                        .foregroundStyle(Color(hex: "#111827"))
+                                    Spacer()
+                                    Text(formatRp(session.total))
+                                        .font(.system(size: 16, weight: .bold))
+                                        .foregroundStyle(Color(hex: "#111827"))
+                                }
+
+                                Text("\(formattedDate(session.date)) • \(participantNamesSummary(for: session))")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Color(hex: "#6B7280"))
+
+                                let unpaidCount = session.participants.filter { $0.name != "Saya" && !$0.isPaid }.count
+                                if unpaidCount > 0 {
+                                    Text("Menunggu \(unpaidCount) pembayaran")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Color(hex: "#D97706"))
+                                } else {
+                                    Text("Semua lunas")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Color(hex: "#16A34A"))
+                                }
+                            }
+                            .padding(18)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 3)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
         }
     }
-
-    private var emptyRecentView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "tray")
-                .font(.system(size: 40))
-                .foregroundStyle(BagiTheme.muted)
-            Text("Belum ada pengeluaran")
-                .font(.subheadline)
-                .foregroundStyle(BagiTheme.muted)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 30)
-        .background(BagiTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: BagiTheme.radius))
-    }
-}
-
-#Preview {
-    DashboardView(expenseStore: ExpenseStore())
 }

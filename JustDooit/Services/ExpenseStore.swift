@@ -34,18 +34,28 @@ class ExpenseStore: ObservableObject {
         if day != analysisDay { analysisDay = day }
     }
 
+    @Published var splitSessions: [SplitBillSession] = [] {
+        didSet {
+            saveSplitSessionsToStorage()
+        }
+    }
+
     private let storageKey = "JustDooit_Expenses_v1"
+    private let splitSessionsKey = "JustDooit_SplitSessions_v1"
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if let savedName = defaults.string(forKey: "UserNameKey"), !savedName.isEmpty {
             self.userName = savedName
+        } else {
+            self.userName = "Rina"
         }
         if let savedBudget = defaults.value(forKey: "DailyBudgetLimitKey") as? Double, savedBudget > 0 {
             self.dailyBudgetLimit = savedBudget
         }
         loadFromStorage()
+        loadSplitSessionsFromStorage()
     }
 
     var totalExpensesAllTime: Double {
@@ -71,6 +81,24 @@ class ExpenseStore: ObservableObject {
 
     func deleteExpense(id: UUID) {
         expenses.removeAll { $0.id == id }
+    }
+
+    func addSplitSession(_ session: SplitBillSession) {
+        if let idx = splitSessions.firstIndex(where: { $0.id == session.id }) {
+            splitSessions[idx] = session
+        } else {
+            splitSessions.insert(session, at: 0)
+        }
+    }
+
+    func updateSplitSession(_ session: SplitBillSession) {
+        if let idx = splitSessions.firstIndex(where: { $0.id == session.id }) {
+            splitSessions[idx] = session
+        }
+    }
+
+    func deleteSplitSession(id: UUID) {
+        splitSessions.removeAll { $0.id == id }
     }
 
     func resetToDemoData() {
@@ -102,6 +130,38 @@ class ExpenseStore: ObservableObject {
         } else {
             // Seed with rich realistic demo data for mini hackathon
             resetToDemoData()
+        }
+    }
+
+    private func saveSplitSessionsToStorage() {
+        if let encoded = try? JSONEncoder().encode(splitSessions) {
+            defaults.set(encoded, forKey: splitSessionsKey)
+        }
+    }
+
+    private func loadSplitSessionsFromStorage() {
+        if let data = defaults.data(forKey: splitSessionsKey),
+           let decoded = try? JSONDecoder().decode([SplitBillSession].self, from: data),
+           !decoded.isEmpty {
+            self.splitSessions = decoded
+        } else {
+            let rina = SplitParticipant(name: "Rina", phoneNumber: "")
+            let budi = SplitParticipant(name: "Budi", phoneNumber: "081234567890", isPaid: false)
+            let citra = SplitParticipant(name: "Citra", phoneNumber: "085712345678", isPaid: false)
+
+            let item1 = SplitItem(name: "Nasi Goreng Spesial", price: 35_000, quantity: 2, assignedParticipantIds: [rina.id, budi.id])
+            let item2 = SplitItem(name: "Ayam Bakar Madu", price: 42_000, quantity: 1, assignedParticipantIds: [citra.id])
+            let item3 = SplitItem(name: "Es Teh Manis", price: 8_000, quantity: 3, assignedParticipantIds: [rina.id, budi.id, citra.id])
+
+            let demoSession = SplitBillSession(
+                title: "Makan Bareng",
+                date: Date(),
+                participants: [rina, budi, citra],
+                items: [item1, item2, item3],
+                taxPercentage: 10,
+                servicePercentage: 5
+            )
+            self.splitSessions = [demoSession]
         }
     }
 }

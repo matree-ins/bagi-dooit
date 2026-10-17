@@ -8,7 +8,7 @@ struct SplitItemsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label("Pesanan", systemImage: "arrow.triangle.branch")
+                Label("Pesanan & Menu", systemImage: "arrow.triangle.branch")
                     .font(.headline)
                     .foregroundStyle(.primary)
                 Spacer()
@@ -30,16 +30,16 @@ struct SplitItemsSection: View {
                 }
             }
 
-            Text("Pilih penerima. Beberapa orang akan berbagi rata.")
+            Text("Pilih penerima untuk setiap menu. Beberapa orang akan berbagi rata.")
                 .font(.footnote)
                 .foregroundStyle(BagiTheme.muted)
 
             if session.items.isEmpty {
                 VStack(spacing: 8) {
-                    Text("Belum ada item ditambahkan.")
+                    Text("Belum ada menu ditambahkan.")
                         .font(.footnote)
                         .foregroundStyle(BagiTheme.muted)
-                    Button("+ Tambah Item Pertama") {
+                    Button("+ Tambah Menu Pertama") {
                         showAddItemSheet = true
                     }
                     .font(.footnote)
@@ -53,19 +53,32 @@ struct SplitItemsSection: View {
                 VStack(spacing: 12) {
                     ForEach($session.items) { $item in
                         VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name)
-                                        .font(.subheadline)
-                                        .fontWeight(.bold)
+                            HStack(alignment: .center) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(spacing: 6) {
+                                        if item.quantity > 1 {
+                                            Text("\(item.quantity)x")
+                                                .font(.caption)
+                                                .fontWeight(.bold)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(BagiTheme.primary.opacity(0.15))
+                                                .foregroundStyle(BagiTheme.primary)
+                                                .clipShape(Capsule())
+                                        }
+                                        Text(item.name)
+                                            .font(.subheadline)
+                                            .fontWeight(.bold)
+                                    }
+
                                     let count = item.assignedParticipantIds.count
                                     if count > 0 {
-                                        let perPerson = item.price / Double(count)
+                                        let perPerson = item.totalPrice / Double(count)
                                         Text("\(count) orang (@ \(CurrencyFormatter.format(perPerson)))")
                                             .font(.system(.footnote))
                                             .foregroundStyle(BagiTheme.muted)
                                     } else {
-                                        Text("Pilih penerima")
+                                        Text("Pilih penerima menu ini")
                                             .font(.system(.footnote))
                                             .foregroundStyle(.red)
                                     }
@@ -73,16 +86,24 @@ struct SplitItemsSection: View {
 
                                 Spacer()
 
-                                Text(CurrencyFormatter.format(item.price))
-                                    .font(.subheadline)
-                                    .fontWeight(.bold)
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text(CurrencyFormatter.format(item.totalPrice))
+                                        .font(.subheadline)
+                                        .fontWeight(.bold)
+
+                                    if item.quantity > 1 {
+                                        Text("@ \(CurrencyFormatter.format(item.price))")
+                                            .font(.caption2)
+                                            .foregroundStyle(BagiTheme.muted)
+                                    }
+                                }
 
                                 Button(action: {
                                     session.items.removeAll { $0.id == item.id }
                                 }) {
                                     Label("Hapus \(item.name)", systemImage: "trash")
                                         .labelStyle(.iconOnly)
-                                        .frame(minWidth: 44, minHeight: 44)
+                                        .frame(minWidth: 36, minHeight: 36)
                                         .font(.footnote)
                                         .foregroundStyle(.red.opacity(0.8))
                                 }
@@ -114,7 +135,7 @@ struct SplitItemsSection: View {
                                             .font(.footnote)
                                             .fontWeight(.semibold)
                                             .padding(.horizontal, 10)
-                                            .padding(.vertical, 12)
+                                            .padding(.vertical, 8)
                                             .background(item.assignedParticipantIds.count == session.participants.count ? BagiTheme.primary : BagiTheme.soft)
                                             .foregroundStyle(item.assignedParticipantIds.count == session.participants.count ? .white : .primary)
                                             .clipShape(Capsule())
@@ -137,7 +158,7 @@ struct SplitItemsSection: View {
                                                         .fontWeight(.medium)
                                                 }
                                                 .padding(.horizontal, 10)
-                                                .padding(.vertical, 12)
+                                                .padding(.vertical, 8)
                                                 .background(isAssigned ? Color.green.opacity(0.18) : BagiTheme.soft)
                                                 .foregroundStyle(isAssigned ? Color.green : Color.primary)
                                                 .overlay(
@@ -158,6 +179,5 @@ struct SplitItemsSection: View {
                 }
             }
         }
-    
     }
 }

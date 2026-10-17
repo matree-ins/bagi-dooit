@@ -11,7 +11,7 @@ struct SplitBillSession: Identifiable, Codable {
     var discount: Double = 0.0
 
     var subtotal: Double {
-        items.reduce(0) { $0 + $1.price }
+        items.reduce(0) { $0 + $1.totalPrice }
     }
 
     var taxAmount: Double {
@@ -24,6 +24,25 @@ struct SplitBillSession: Identifiable, Codable {
 
     var total: Double {
         max(0, subtotal - discount + taxAmount + serviceAmount)
+    }
+
+    var paidCount: Int {
+        participants.filter { $0.isPaid }.count
+    }
+
+    var unpaidCount: Int {
+        participants.filter { !$0.isPaid && $0.name != "Saya" }.count
+    }
+
+    var isAllPaid: Bool {
+        let otherParticipants = participants.filter { $0.name != "Saya" }
+        return !otherParticipants.isEmpty && otherParticipants.allSatisfy { $0.isPaid }
+    }
+
+    mutating func togglePaid(for participantId: UUID) {
+        if let idx = participants.firstIndex(where: { $0.id == participantId }) {
+            participants[idx].isPaid.toggle()
+        }
     }
 
     var sharingIssue: String? {
@@ -52,7 +71,7 @@ struct SplitBillSession: Identifiable, Codable {
         for item in items {
             if item.assignedParticipantIds.contains(participantId) {
                 let shareCount = max(1, item.assignedParticipantIds.count)
-                sum += item.price / Double(shareCount)
+                sum += item.totalPrice / Double(shareCount)
             }
         }
         return sum
@@ -82,11 +101,12 @@ struct SplitBillSession: Identifiable, Codable {
 
         for item in assignedItems {
             let splitAmong = item.assignedParticipantIds.count
-            let sharePrice = item.price / Double(max(1, splitAmong))
+            let sharePrice = item.totalPrice / Double(max(1, splitAmong))
+            let qtyStr = item.quantity > 1 ? "\(item.quantity)x " : ""
             if splitAmong > 1 {
-                message += "• \(item.name): \(CurrencyFormatter.format(sharePrice)) (patungan \(splitAmong) orang)\n"
+                message += "• \(qtyStr)\(item.name): \(CurrencyFormatter.format(sharePrice)) (patungan \(splitAmong) orang)\n"
             } else {
-                message += "• \(item.name): \(CurrencyFormatter.format(sharePrice))\n"
+                message += "• \(qtyStr)\(item.name): \(CurrencyFormatter.format(sharePrice))\n"
             }
         }
 
@@ -111,8 +131,6 @@ struct SplitBillSession: Identifiable, Codable {
             return nil
         }
 
-        // WhatsApp deep link format: https://wa.me/<number>?text=<encoded_text>
-        // Or whatsapp://send?phone=<number>&text=<encoded_text>
         let urlString = "https://wa.me/\(phone)?text=\(encodedText)"
         return URL(string: urlString)
     }
