@@ -7,6 +7,12 @@ import SwiftUI
 import Combine
 
 class ExpenseStore: ObservableObject {
+    @Published var userName: String = "Teman Dooit" {
+        didSet {
+            defaults.set(userName, forKey: "UserNameKey")
+        }
+    }
+
     @Published var expenses: [Expense] = [] {
         didSet {
             saveToStorage()
@@ -24,6 +30,9 @@ class ExpenseStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        if let savedName = defaults.string(forKey: "UserNameKey"), !savedName.isEmpty {
+            self.userName = savedName
+        }
         if let savedBudget = defaults.value(forKey: "DailyBudgetLimitKey") as? Double, savedBudget > 0 {
             self.dailyBudgetLimit = savedBudget
         }

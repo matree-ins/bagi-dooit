@@ -7,6 +7,8 @@ import SwiftUI
 import UIKit
 
 struct SplitBillView: View {
+    @Environment(\.dismiss) private var dismiss
+
     @State private var session = SplitBillSession(
         title: "Makan Siang Bareng Tim",
         participants: [
@@ -64,6 +66,13 @@ struct SplitBillView: View {
             }
             .bagiScreen()
             .navigationTitle("Bagi tagihan")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Tutup") {
+                        dismiss()
+                    }
+                }
+            }
             .sheet(isPresented: $showContactPicker) {
                 ContactPickerView { name, phone in
                     let participant = SplitParticipant(name: name, phoneNumber: phone)
@@ -278,5 +287,3 @@ struct SplitBillView: View {
         }
     }
 }
-
-// Activity View Controller for Fallback Sharing

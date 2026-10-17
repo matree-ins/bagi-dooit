@@ -8,27 +8,58 @@
 import SwiftUI
 
 struct ContentView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @StateObject private var expenseStore = ExpenseStore()
     @State private var selectedTab: AppTab = .home
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab("Beranda", systemImage: "house.fill", value: AppTab.home) {
-                DashboardView(expenseStore: expenseStore, onNavigateToSplitBill: {
-                    selectedTab = .splitBill
-                })
-            }
-            Tab("Bagi Tagihan", systemImage: "person.2.fill", value: AppTab.splitBill) {
-                SplitBillView()
-            }
-            Tab("Tips Hemat", systemImage: "chart.pie.fill", value: AppTab.analytics) {
-                AnalyticsView(expenseStore: expenseStore)
+        Group {
+            if !hasCompletedOnboarding {
+                OnboardingView {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        hasCompletedOnboarding = true
+                    }
+                }
+            } else {
+                TabView(selection: $selectedTab) {
+                    DashboardView(
+                        expenseStore: expenseStore,
+                        onNavigateToHistory: {
+                            selectedTab = .history
+                        },
+                        onShowOnboarding: {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                hasCompletedOnboarding = false
+                            }
+                        }
+                    )
+                    .tabItem {
+                        Label("Beranda", systemImage: "house.fill")
+                    }
+                    .tag(AppTab.home)
+
+                    HistoryView(expenseStore: expenseStore)
+                        .tabItem {
+                            Label("Riwayat", systemImage: "clock.arrow.circlepath")
+                        }
+                        .tag(AppTab.history)
+
+                    AnalyticsView(expenseStore: expenseStore)
+                        .tabItem {
+                            Label("Tips Hemat", systemImage: "chart.pie.fill")
+                        }
+                        .tag(AppTab.analytics)
+                }
+                .tint(BagiTheme.primary)
             }
         }
-        .tint(BagiTheme.primary)
     }
 }
 
-#Preview {
+#Preview("Main Content") {
     ContentView()
+}
+
+#Preview("Onboarding") {
+    OnboardingView(onGetStarted: {})
 }
